@@ -1,0 +1,4 @@
+body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 20px; }
+header { text-align: center; margin-bottom: 20px; }
+#calendar { max-width: 900px; margin: 0 auto; }
+.fc-event { cursor: pointer; } /* Booked slots */
