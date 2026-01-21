@@ -48,39 +48,54 @@ document.addEventListener('DOMContentLoaded', function() {
   });
   calendar.render();
 
-// Auto-detect browser time zone
-const detectedTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-// Populate time zone dropdown dynamically (only if the select exists)
+// Auto-detect and populate time zone dropdown
+const detectedTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 const timeZoneSelect = document.getElementById('timeZone');
+
 if (timeZoneSelect) {
-  // Get the list of supported time zones from the browser
-  const timeZones = Intl.supportedValuesOf('timeZone');
-  
-  timeZones.forEach(tz => {
-    const option = document.createElement('option');
-      option.value = tz;
-      const now = new Date();
-      const formatter = new Intl.DateTimeFormat('en-US', {
-        timeZone: tz,
-        timeZoneName: 'shortOffset'
+  console.log('Detected timezone:', detectedTimeZone); // Check console to confirm
+
+  try {
+    const timeZones = Intl.supportedValuesOf('timeZone') || [];
+    if (timeZones.length === 0) {
+      console.warn('No time zones available from Intl');
+      timeZoneSelect.innerHTML = '<option value="UTC">UTC (fallback)</option>';
+    } else {
+      timeZones.forEach(tz => {
+        const option = document.createElement('option');
+        option.value = tz;
+        const now = new Date();
+        const formatter = new Intl.DateTimeFormat('en-US', {
+          timeZone: tz,
+          timeZoneName: 'shortOffset'
+        });
+        const parts = formatter.formatToParts(now);
+        const offset = parts.find(p => p.type === 'timeZoneName')?.value || '';
+        option.textContent = `${tz.replace(/_/g, ' ')} ${offset}`;
+        if (tz === detectedTimeZone) option.selected = true;
+        timeZoneSelect.appendChild(option);
       });
-      const parts = formatter.formatToParts(now);
-      const offset = parts.find(p => p.type === 'timeZoneName')?.value || '';
-      option.textContent = `${tz.replace(/_/g, ' ')} ${offset}`;
-      if (tz === detectedTimeZone) {
-        option.selected = true;
-      }
-      timeZoneSelect.appendChild(option);
-    });
 
-    // Optional: sort the list alphabetically
-    const options = Array.from(timeZoneSelect.options);
-    options.sort((a, b) => a.textContent.localeCompare(b.textContent));
-    timeZoneSelect.innerHTML = '';
-    options.forEach(opt => timeZoneSelect.appendChild(opt));
+      // Sort alphabetically
+      const options = Array.from(timeZoneSelect.options);
+      options.sort((a, b) => a.textContent.localeCompare(b.textContent));
+      timeZoneSelect.innerHTML = '';
+      options.forEach(opt => timeZoneSelect.appendChild(opt));
+
+      // Add fallback at top if needed
+      const fallback = document.createElement('option');
+      fallback.value = detectedTimeZone;
+      fallback.textContent = `Detected: ${detectedTimeZone}`;
+      fallback.selected = true;
+      timeZoneSelect.insertBefore(fallback, timeZoneSelect.firstChild);
+    }
+  } catch (err) {
+    console.error('Error populating time zones:', err);
+    timeZoneSelect.innerHTML = '<option value="UTC">UTC (error loading list)</option>';
   }
-
+} else {
+  console.error('Time zone select element not found in DOM');
+}
   // Function to load bookings from Firebase for the current month
   function loadBookings(month, successCallback) {
     db.ref('bookings/' + month).on('value', snapshot => { // Real-time listener
