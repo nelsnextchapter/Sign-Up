@@ -10,31 +10,39 @@ document.addEventListener('DOMContentLoaded', function () {
         appId: "1:422000960325:web:0c04c82e5d3d5cc8cf942c",
         measurementId: "G-YPQC9GB1GJ"
     };
+
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
 
+  // DOM elements
   const calendarEl = document.getElementById('calendar');
   const userNameInput = document.getElementById('userName');
   const timeZoneSelect = document.getElementById('timeZone');
 
-  const calendar = new FullCalendar.Calendar(calendarEl, {
-    initialView: 'timeGridWeek',
-    headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' },
-    editable: false,
-    selectable: true, // Start true; we'll toggle per view
-    viewDidMount: function(view) {
-      // Dynamically toggle selectable based on view to avoid selection in month view
-      try {
+  let calendar;                 // Will hold the calendar instance
+  let currentView = 'timeGridWeek';  // Track current view type when rebuilding
+
+  // ────────────────────────────────────────────────
+  // Function to (re)initialize the calendar with a specific time zone
+  function initCalendar(tz) {
+    if (calendar) {
+      calendar.destroy();  // Clean up previous instance
+    }
+
+    calendar = new FullCalendar.Calendar(calendarEl, {
+      initialView: currentView,
+      headerToolbar: {
+        left: 'prev,next today',
+        center: 'title',
+        right: 'dayGridMonth,timeGridWeek,timeGridDay'
+      },
+      editable: false,
+      selectable: true,
+      viewDidMount: function(view) {
         const isTimeGrid = view.view.type.startsWith('timeGrid');
         calendar.setOption('selectable', isTimeGrid);
-        console.log('View mounted:', view.view.type, 'Selectable:', isTimeGrid); // Temp debug log
-      } catch (err) {
-        console.error('Error in viewDidMount:', err);
-      }
-    },
-    select: function(info) {
-      try {
-        console.log('Select triggered:', info.startStr, 'to', info.endStr); // Temp debug log
+      },
+      select: function(info) {
         const userName = userNameInput.value.trim();
         if (!userName) {
           alert('Please enter your name.');
@@ -50,64 +58,67 @@ document.addEventListener('DOMContentLoaded', function () {
             alert('Slot is already booked or overlaps with an existing booking.');
           }
         });
-      } catch (err) {
-        console.error('Error in select:', err);
-        alert('An error occurred during selection. Please try again.');
-      }
-    },
-    eventClick: function(info) {
-  try {
-    const userName = userNameInput.value.trim();
-    if (!userName) {
-      alert('Please enter your name to manage bookings.');
-      return;
-    }
-    const booking = info.event;
-    if (booking.title !== userName) {
-      alert('You can only delete your own bookings.');
-      return;
-    }
+      },
+      eventClick: function(info) {
+        const userName = userNameInput.value.trim();
+        if (!userName) {
+          alert('Please enter your name to manage bookings.');
+          return;
+        }
+        const booking = info.event;
+        if (booking.title !== userName) {
+          alert('You can only delete your own bookings.');
+          return;
+        }
 
-    // Get current calendar time zone
-    const currentTz = calendar.getOption('timeZone');
+        // Use the calendar's current time zone for display in confirmation
+        const currentTz = calendar.getOption('timeZone');
+        const formatter = new Intl.DateTimeFormat('en-US', {
+          dateStyle: 'short',
+          timeStyle: 'short',
+          timeZone: currentTz
+        });
+        const startStr = formatter.format(booking.start);
+        const endStr = formatter.format(booking.end);
 
-    // Format start/end in the current TZ
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      dateStyle: 'short',
-      timeStyle: 'short',
-      timeZone: currentTz
-    });
-    const startStr = formatter.format(booking.start);
-    const endStr = formatter.format(booking.end);
-
-    if (confirm(`Delete booking for ${booking.title} from ${startStr} to ${endStr}?`)) {
-      deleteBooking(booking.extendedProps.dbPath);
-      info.event.remove();
-    }
-  } catch (err) {
-    console.error('Error in eventClick:', err);
-  }
-},
-    events: function(fetchInfo, successCallback) {
-      try {
+        if (confirm(`Delete booking for ${booking.title} from ${startStr} to ${endStr}?`)) {
+          deleteBooking(booking.extendedProps.dbPath);
+          info.event.remove();
+        }
+      },
+      events: function(fetchInfo, successCallback) {
         const month = fetchInfo.start.toISOString().slice(0, 7);
         loadBookings(month, successCallback);
-      } catch (err) {
-        console.error('Error fetching events:', err);
+      },
+      timeZone: tz  // Explicitly set here
+    });
+
+    calendar.render();
+
+    // Real-time listener for the current month
+    let unsubscribeCurrentMonth = null;
+
+    calendar.on('datesSet', function(info) {
+      const month = info.start.toISOString().slice(0, 7);
+
+      if (unsubscribeCurrentMonth) {
+        unsubscribeCurrentMonth();
       }
-    },
-  
-  });
-  calendar.render();
 
-  // Auto-detect browser time zone
+      const ref = db.ref('bookings/' + month);
+      unsubscribeCurrentMonth = ref.on('value', () => {
+        calendar.refetchEvents();
+      });
+    });
+  }
+
+  // ────────────────────────────────────────────────
+  // Detect initial time zone and populate dropdown
   const detectedTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    calendar.setOption('timeZone', detectedTimeZone);
 
-  // Populate time zone dropdown dynamically
   if (timeZoneSelect) {
     const timeZones = Intl.supportedValuesOf('timeZone');
-    
+
     timeZones.forEach(tz => {
       const option = document.createElement('option');
       option.value = tz;
@@ -125,27 +136,29 @@ document.addEventListener('DOMContentLoaded', function () {
       timeZoneSelect.appendChild(option);
     });
 
-      // Listener for time zone change
-if (timeZoneSelect) {
-  timeZoneSelect.addEventListener('change', function() {
-    const newTz = timeZoneSelect.value;
-    if (newTz) {
-      calendar.setOption('timeZone', newTz);
-      calendar.refetchEvents(); // Refetch data
-      calendar.changeView(calendar.view.type); // Force re-render current view
-      alert('Time zone updated to ' + newTz + '. Calendar refreshed.');
-    }
-  });
-}
-
-    // Optional: Sort alphabetically by display text
+    // Sort alphabetically
     const options = Array.from(timeZoneSelect.options);
     options.sort((a, b) => a.textContent.localeCompare(b.textContent));
     timeZoneSelect.innerHTML = '';
     options.forEach(opt => timeZoneSelect.appendChild(opt));
   }
 
-  // Enter key on name input for convenience
+  // Initial calendar load with detected time zone
+  initCalendar(detectedTimeZone);
+
+  // Time zone change → rebuild calendar with new TZ
+  if (timeZoneSelect) {
+    timeZoneSelect.addEventListener('change', function() {
+      const newTz = timeZoneSelect.value;
+      if (newTz) {
+        currentView = calendar ? calendar.view.type : 'timeGridWeek';
+        initCalendar(newTz);
+        alert(`Calendar updated to ${newTz}. Times should now be adjusted.`);
+      }
+    });
+  }
+
+  // Enter key support for name field
   userNameInput.addEventListener('keypress', function(e) {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -158,31 +171,8 @@ if (timeZoneSelect) {
     }
   });
 
-  // Global real-time listener to refetch events on any DB change
-let unsubscribeCurrentMonth = null;  // Will hold the unsubscribe function
-
-calendar.on('datesSet', function(info) {
-  try {
-    const month = info.start.toISOString().slice(0, 7);
-
-    // Clean up previous listener if it exists
-    if (unsubscribeCurrentMonth) {
-      unsubscribeCurrentMonth();  // Call the function to unsubscribe
-      console.log('Unsubscribed from previous month:', month); // Temp debug
-    }
-
-    // Set up new listener and store the unsubscribe function
-    const ref = db.ref('bookings/' + month);
-    unsubscribeCurrentMonth = ref.on('value', () => {
-      calendar.refetchEvents();
-    });
-
-  } catch (err) {
-    console.error('Error in datesSet:', err);
-  }
-});
-
-  // Load bookings
+  // ────────────────────────────────────────────────
+  // Booking helper functions
   function loadBookings(month, successCallback) {
     db.ref('bookings/' + month).once('value').then(snapshot => {
       const events = [];
@@ -204,7 +194,6 @@ calendar.on('datesSet', function(info) {
     }).catch(err => console.error('Error loading bookings:', err));
   }
 
-  // Check for overlap
   async function checkForOverlap(start, end) {
     const month = start.slice(0, 7);
     const snapshot = await db.ref('bookings/' + month).once('value');
@@ -223,7 +212,6 @@ calendar.on('datesSet', function(info) {
     return true;
   }
 
-  // Book slot
   function bookSlot(name, start, end) {
     const month = start.slice(0, 7);
     const day = start.slice(0, 10);
@@ -236,7 +224,6 @@ calendar.on('datesSet', function(info) {
       .catch(err => alert('Error booking slot: ' + err.message));
   }
 
-  // Delete booking
   function deleteBooking(dbPath) {
     db.ref(dbPath).remove()
       .then(() => {
@@ -246,10 +233,10 @@ calendar.on('datesSet', function(info) {
       .catch(err => alert('Error deleting booking: ' + err.message));
   }
 
-    // Cleanup on page unload
-window.addEventListener('beforeunload', () => {
-  if (unsubscribeCurrentMonth) {
-    unsubscribeCurrentMonth();
-  }
-});
+  // Cleanup on page leave (optional but good practice)
+  window.addEventListener('beforeunload', () => {
+    if (calendar) {
+      calendar.destroy();
+    }
+  });
 });
