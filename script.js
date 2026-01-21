@@ -56,25 +56,38 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     },
     eventClick: function(info) {
-      try {
-        const userName = userNameInput.value.trim();
-        if (!userName) {
-          alert('Please enter your name to manage bookings.');
-          return;
-        }
-        const booking = info.event;
-        if (booking.title !== userName) {
-          alert('You can only delete your own bookings.');
-          return;
-        }
-        if (confirm(`Delete booking for ${booking.title} from ${booking.start.toLocaleString()} to ${booking.end.toLocaleString()}?`)) {
-          deleteBooking(booking.extendedProps.dbPath);
-          info.event.remove();
-        }
-      } catch (err) {
-        console.error('Error in eventClick:', err);
-      }
-    },
+  try {
+    const userName = userNameInput.value.trim();
+    if (!userName) {
+      alert('Please enter your name to manage bookings.');
+      return;
+    }
+    const booking = info.event;
+    if (booking.title !== userName) {
+      alert('You can only delete your own bookings.');
+      return;
+    }
+
+    // Get current calendar time zone
+    const currentTz = calendar.getOption('timeZone');
+
+    // Format start/end in the current TZ
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      dateStyle: 'short',
+      timeStyle: 'short',
+      timeZone: currentTz
+    });
+    const startStr = formatter.format(booking.start);
+    const endStr = formatter.format(booking.end);
+
+    if (confirm(`Delete booking for ${booking.title} from ${startStr} to ${endStr}?`)) {
+      deleteBooking(booking.extendedProps.dbPath);
+      info.event.remove();
+    }
+  } catch (err) {
+    console.error('Error in eventClick:', err);
+  }
+},
     events: function(fetchInfo, successCallback) {
       try {
         const month = fetchInfo.start.toISOString().slice(0, 7);
@@ -118,8 +131,9 @@ if (timeZoneSelect) {
     const newTz = timeZoneSelect.value;
     if (newTz) {
       calendar.setOption('timeZone', newTz);
-      calendar.refetchEvents(); // Re-render events in new TZ
-      alert('Time zone updated to ' + newTz + '. Calendar times adjusted.');
+      calendar.refetchEvents(); // Refetch data
+      calendar.changeView(calendar.view.type); // Force re-render current view
+      alert('Time zone updated to ' + newTz + '. Calendar refreshed.');
     }
   });
 }
