@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   const calendarEl = document.getElementById('calendar');
   const userNameInput = document.getElementById('userName');
-  const timeZoneSelect = document.getElementById('timeZone'); // Uncommented for use
+  const timeZoneSelect = document.getElementById('timeZone');
 
   const calendar = new FullCalendar.Calendar(calendarEl, {
     initialView: 'timeGridWeek',
@@ -23,8 +23,8 @@ document.addEventListener('DOMContentLoaded', function () {
     editable: false,
     selectable: true,
     selectAllow: function(selectInfo) {
-      // Only allow selection in views with time slots (not month)
-      return selectInfo.view.type.startsWith('timeGrid');
+      // Fix: Add null-check for view to avoid TypeError
+      return selectInfo.view?.type.startsWith('timeGrid') || false;
     },
     select: function(info) {
       const userName = userNameInput.value.trim();
@@ -55,11 +55,11 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
       }
       if (confirm(`Delete booking for ${booking.title} from ${booking.start.toLocaleString()} to ${booking.end.toLocaleString()}?`)) {
-        deleteBooking(booking.extendedProps.dbPath); // We'll add dbPath when loading events
-        info.event.remove(); // Remove from calendar immediately
+        deleteBooking(booking.extendedProps.dbPath);
+        info.event.remove();
       }
     },
-    events: function(fetchInfo, successCallback, failureCallback) {
+    events: function(fetchInfo, successCallback) {
       const month = fetchInfo.start.toISOString().slice(0, 7);
       loadBookings(month, successCallback);
     },
@@ -111,19 +111,21 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   });
 
-  // Global real-time listener to refetch events on any DB change (for visibility)
+  // Global real-time listener to refetch events on any DB change
   let currentMonthListener;
   calendar.on('datesSet', function(info) {
     const month = info.start.toISOString().slice(0, 7);
-    if (currentMonthListener) currentMonthListener.off(); // Remove old listener
+    if (currentMonthListener) {
+      currentMonthListener.off(); // Clean up old listener to avoid leaks/freezes
+    }
     currentMonthListener = db.ref('bookings/' + month).on('value', () => {
-      calendar.refetchEvents(); // Refetch and re-render on change
+      calendar.refetchEvents();
     });
   });
 
   // Load bookings (updated to include dbPath for deletion)
   function loadBookings(month, successCallback) {
-    db.ref('bookings/' + month).once('value').then(snapshot => { // Use once for initial load, on for real-time
+    db.ref('bookings/' + month).once('value').then(snapshot => {
       const events = [];
       if (snapshot.exists()) {
         snapshot.forEach(daySnap => {
@@ -134,16 +136,16 @@ document.addEventListener('DOMContentLoaded', function () {
               start: booking.start,
               end: booking.end,
               color: 'red',
-              extendedProps: { dbPath: hourSnap.ref.path } // Store path for deletion
+              extendedProps: { dbPath: hourSnap.ref.path }
             });
           });
         });
       }
       successCallback(events);
-    });
+    }).catch(err => console.error('Error loading bookings:', err));
   }
 
-  // Check for overlap (unchanged)
+  // Check for overlap
   async function checkForOverlap(start, end) {
     const month = start.slice(0, 7);
     const snapshot = await db.ref('bookings/' + month).once('value');
@@ -162,7 +164,7 @@ document.addEventListener('DOMContentLoaded', function () {
     return true;
   }
 
-  // Book slot (add refetch after save)
+  // Book slot
   function bookSlot(name, start, end) {
     const month = start.slice(0, 7);
     const day = start.slice(0, 10);
@@ -170,12 +172,12 @@ document.addEventListener('DOMContentLoaded', function () {
     db.ref(`bookings/${month}/${day}/${hourKey}`).set({ name, start, end })
       .then(() => {
         alert('Slot booked successfully!');
-        calendar.refetchEvents(); // Refresh calendar immediately
+        calendar.refetchEvents();
       })
       .catch(err => alert('Error booking slot: ' + err.message));
   }
 
-  // New: Delete booking
+  // Delete booking
   function deleteBooking(dbPath) {
     db.ref(dbPath).remove()
       .then(() => {
