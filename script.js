@@ -83,12 +83,13 @@ document.addEventListener('DOMContentLoaded', function () {
         console.error('Error fetching events:', err);
       }
     },
-    timeZone: 'local'
+  
   });
   calendar.render();
 
   // Auto-detect browser time zone
   const detectedTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    calendar.setOption('timeZone', detectedTimeZone);
 
   // Populate time zone dropdown dynamically
   if (timeZoneSelect) {
@@ -110,6 +111,18 @@ document.addEventListener('DOMContentLoaded', function () {
       }
       timeZoneSelect.appendChild(option);
     });
+
+      // Listener for time zone change
+if (timeZoneSelect) {
+  timeZoneSelect.addEventListener('change', function() {
+    const newTz = timeZoneSelect.value;
+    if (newTz) {
+      calendar.setOption('timeZone', newTz);
+      calendar.refetchEvents(); // Re-render events in new TZ
+      alert('Time zone updated to ' + newTz + '. Calendar times adjusted.');
+    }
+  });
+}
 
     // Optional: Sort alphabetically by display text
     const options = Array.from(timeZoneSelect.options);
