@@ -145,21 +145,28 @@ if (timeZoneSelect) {
   });
 
   // Global real-time listener to refetch events on any DB change
-  let currentMonthListener;
-  calendar.on('datesSet', function(info) {
-    try {
-      const month = info.start.toISOString().slice(0, 7);
-      if (currentMonthListener) {
-        currentMonthListener.off();
-        console.log('Removed old listener for month:', month); // Temp debug
-      }
-      currentMonthListener = db.ref('bookings/' + month).on('value', () => {
-        calendar.refetchEvents();
-      });
-    } catch (err) {
-      console.error('Error in datesSet:', err);
+let unsubscribeCurrentMonth = null;  // Will hold the unsubscribe function
+
+calendar.on('datesSet', function(info) {
+  try {
+    const month = info.start.toISOString().slice(0, 7);
+
+    // Clean up previous listener if it exists
+    if (unsubscribeCurrentMonth) {
+      unsubscribeCurrentMonth();  // Call the function to unsubscribe
+      console.log('Unsubscribed from previous month:', month); // Temp debug
     }
-  });
+
+    // Set up new listener and store the unsubscribe function
+    const ref = db.ref('bookings/' + month);
+    unsubscribeCurrentMonth = ref.on('value', () => {
+      calendar.refetchEvents();
+    });
+
+  } catch (err) {
+    console.error('Error in datesSet:', err);
+  }
+});
 
   // Load bookings
   function loadBookings(month, successCallback) {
@@ -224,4 +231,11 @@ if (timeZoneSelect) {
       })
       .catch(err => alert('Error deleting booking: ' + err.message));
   }
+
+    // Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+  if (unsubscribeCurrentMonth) {
+    unsubscribeCurrentMonth();
+  }
 });
+
