@@ -238,4 +238,4 @@ window.addEventListener('beforeunload', () => {
     unsubscribeCurrentMonth();
   }
 });
-
+});
