@@ -25,21 +25,15 @@
     <div id="calendar"></div>
   </main>
 
-  <!-- Firebase Compat (for database) -->
-<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+<!-- Firebase Compat (non-modular) - MUST load BEFORE your script.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/12.3.0/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/12.3.0/firebase-database-compat.min.js"></script>
 
-<!-- Moment + Moment-Timezone (required for named time zones to shift correctly) -->
-<script src="https://cdn.jsdelivr.net/npm/moment@2.30.1/min/moment.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/moment-timezone@0.5.46/builds/moment-timezone-with-data-10-year-range.min.js"></script>
+<!-- FullCalendar (unchanged) -->
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
 
-<!-- FullCalendar core + required plugins separately (fixes selectable/interaction) -->
-<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.15/index.global.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid@6.1.15/index.global.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/timegrid@6.1.15/index.global.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/interaction@6.1.15/index.global.min.js"></script>  <!-- THIS enables drag-select -->
-
-<!-- Your script.js last -->
+<!-- Your custom code - load LAST -->
 <script src="script.js"></script>
+  
 </body>
 </html>
