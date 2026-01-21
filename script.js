@@ -10,115 +10,75 @@ document.addEventListener('DOMContentLoaded', function () {
         appId: "1:422000960325:web:0c04c82e5d3d5cc8cf942c",
         measurementId: "G-YPQC9GB1GJ"
     };
-
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
 
-  // DOM elements
   const calendarEl = document.getElementById('calendar');
   const userNameInput = document.getElementById('userName');
   const timeZoneSelect = document.getElementById('timeZone');
 
-  let calendar;                 // Will hold the calendar instance
-  let currentView = 'timeGridWeek';  // Track current view type when rebuilding
-
-  // ────────────────────────────────────────────────
-  // Function to (re)initialize the calendar with a specific time zone
-  function initCalendar(tz) {
-    if (calendar) {
-      calendar.destroy();  // Clean up previous instance
-    }
-
-    calendar = new FullCalendar.Calendar(calendarEl, {
-      initialView: currentView,
-      headerToolbar: {
-        left: 'prev,next today',
-        center: 'title',
-        right: 'dayGridMonth,timeGridWeek,timeGridDay'
-      },
-      editable: false,
-      selectable: true,
-      viewDidMount: function(view) {
-        const isTimeGrid = view.view.type.startsWith('timeGrid');
-        calendar.setOption('selectable', isTimeGrid);
-      },
-      select: function(info) {
-        const userName = userNameInput.value.trim();
-        if (!userName) {
-          alert('Please enter your name.');
-          return;
-        }
-        const start = info.start.toISOString();
-        const end = info.end.toISOString();
-
-        checkForOverlap(start, end).then(isAvailable => {
-          if (isAvailable) {
-            bookSlot(userName, start, end);
-          } else {
-            alert('Slot is already booked or overlaps with an existing booking.');
-          }
-        });
-      },
-      eventClick: function(info) {
-        const userName = userNameInput.value.trim();
-        if (!userName) {
-          alert('Please enter your name to manage bookings.');
-          return;
-        }
-        const booking = info.event;
-        if (booking.title !== userName) {
-          alert('You can only delete your own bookings.');
-          return;
-        }
-
-        // Use the calendar's current time zone for display in confirmation
-        const currentTz = calendar.getOption('timeZone');
-        const formatter = new Intl.DateTimeFormat('en-US', {
-          dateStyle: 'short',
-          timeStyle: 'short',
-          timeZone: currentTz
-        });
-        const startStr = formatter.format(booking.start);
-        const endStr = formatter.format(booking.end);
-
-        if (confirm(`Delete booking for ${booking.title} from ${startStr} to ${endStr}?`)) {
-          deleteBooking(booking.extendedProps.dbPath);
-          info.event.remove();
-        }
-      },
-      events: function(fetchInfo, successCallback) {
-        const month = fetchInfo.start.toISOString().slice(0, 7);
-        loadBookings(month, successCallback);
-      },
-      timeZone: tz  // Explicitly set here
-    });
-
-    calendar.render();
-
-    // Real-time listener for the current month
-    let unsubscribeCurrentMonth = null;
-
-    calendar.on('datesSet', function(info) {
-      const month = info.start.toISOString().slice(0, 7);
-
-      if (unsubscribeCurrentMonth) {
-        unsubscribeCurrentMonth();
+  const calendar = new FullCalendar.Calendar(calendarEl, {
+    initialView: 'timeGridWeek',
+    headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' },
+    editable: false,
+    selectable: true,
+    selectAllow: function(selectInfo) {
+      return selectInfo.view?.type.startsWith('timeGrid') || false;
+    },
+    select: function(info) {
+      const userName = userNameInput.value.trim();
+      if (!userName) {
+        alert('Please enter your name.');
+        return;
       }
+      const start = info.start.toISOString();
+      const end = info.end.toISOString();
 
-      const ref = db.ref('bookings/' + month);
-      unsubscribeCurrentMonth = ref.on('value', () => {
-        calendar.refetchEvents();
+      checkForOverlap(start, end).then(isAvailable => {
+        if (isAvailable) {
+          bookSlot(userName, start, end);
+        } else {
+          alert('Slot is already booked or overlaps with an existing booking.');
+        }
       });
-    });
-  }
+    },
+    eventClick: function(info) {
+      const userName = userNameInput.value.trim();
+      if (!userName) {
+        alert('Please enter your name to manage bookings.');
+        return;
+      }
+      const booking = info.event;
+      if (booking.title !== userName) {
+        alert('You can only delete your own bookings.');
+        return;
+      }
+      const currentTz = calendar.getOption('timeZone');
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        dateStyle: 'short',
+        timeStyle: 'short',
+        timeZone: currentTz
+      });
+      const startStr = formatter.format(booking.start);
+      const endStr = formatter.format(booking.end);
+      if (confirm(`Delete booking for ${booking.title} from ${startStr} to ${endStr}?`)) {
+        deleteBooking(booking.extendedProps.dbPath);
+        info.event.remove();
+      }
+    },
+    events: function(fetchInfo, successCallback) {
+      const month = fetchInfo.start.toISOString().slice(0, 7);
+      loadBookings(month, successCallback);
+    }
+  });
+  calendar.render();
 
-  // ────────────────────────────────────────────────
-  // Detect initial time zone and populate dropdown
   const detectedTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  calendar.setOption('timeZone', detectedTimeZone);
 
   if (timeZoneSelect) {
     const timeZones = Intl.supportedValuesOf('timeZone');
-
+    
     timeZones.forEach(tz => {
       const option = document.createElement('option');
       option.value = tz;
@@ -136,29 +96,22 @@ document.addEventListener('DOMContentLoaded', function () {
       timeZoneSelect.appendChild(option);
     });
 
-    // Sort alphabetically
     const options = Array.from(timeZoneSelect.options);
     options.sort((a, b) => a.textContent.localeCompare(b.textContent));
     timeZoneSelect.innerHTML = '';
     options.forEach(opt => timeZoneSelect.appendChild(opt));
   }
 
-  // Initial calendar load with detected time zone
-  initCalendar(detectedTimeZone);
-
-  // Time zone change → rebuild calendar with new TZ
   if (timeZoneSelect) {
     timeZoneSelect.addEventListener('change', function() {
       const newTz = timeZoneSelect.value;
       if (newTz) {
-        currentView = calendar ? calendar.view.type : 'timeGridWeek';
-        initCalendar(newTz);
-        alert(`Calendar updated to ${newTz}. Times should now be adjusted.`);
+        calendar.setOption('timeZone', newTz);
+        calendar.refetchEvents();
       }
     });
   }
 
-  // Enter key support for name field
   userNameInput.addEventListener('keypress', function(e) {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -171,8 +124,18 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   });
 
-  // ────────────────────────────────────────────────
-  // Booking helper functions
+  let unsubscribeCurrentMonth = null;
+  calendar.on('datesSet', function(info) {
+    const month = info.start.toISOString().slice(0, 7);
+    if (unsubscribeCurrentMonth) {
+      unsubscribeCurrentMonth();
+    }
+    const ref = db.ref('bookings/' + month);
+    unsubscribeCurrentMonth = ref.on('value', () => {
+      calendar.refetchEvents();
+    });
+  });
+
   function loadBookings(month, successCallback) {
     db.ref('bookings/' + month).once('value').then(snapshot => {
       const events = [];
@@ -232,11 +195,4 @@ document.addEventListener('DOMContentLoaded', function () {
       })
       .catch(err => alert('Error deleting booking: ' + err.message));
   }
-
-  // Cleanup on page leave (optional but good practice)
-  window.addEventListener('beforeunload', () => {
-    if (calendar) {
-      calendar.destroy();
-    }
-  });
 });
