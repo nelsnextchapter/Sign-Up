@@ -800,12 +800,12 @@ document.addEventListener('mouseup', () => {
 let currentTutorialStep = 0;
 let tutorialSteps = [
   {
-    title: "📅 Welcome to the Calendar Booking System!",
+    title: "📅 Welcome to the Sprint Sign-Up System!",
     text: "This tutorial will guide you through all the features. You can skip anytime or restart the tutorial later using the 'Help' button."
   },
   {
     title: "🗓️ Month View",
-    text: "You're currently in Month View. This shows the entire month at a glance. Days with bookings show colored dots - green for your bookings, blue for others. Click on any day to jump to that week."
+    text: "This view shows the entire month at a glance. Days with existing reservations show colored dots - green for reservations you've made and blue for everyone else's. Click on any day to jump to that week."
   },
   {
     title: "📊 Week View",
@@ -813,7 +813,7 @@ let tutorialSteps = [
   },
   {
     title: "🕐 Time Zone Selection",
-    text: "Change your timezone here. All sign-ups are automatically converted to your selected timezone."
+    text: "You can easily select your time zone using the drop down at the top to view and create reservations in your local time."
   },
   {
     title: "👤 Edit Your Profile",
@@ -821,23 +821,23 @@ let tutorialSteps = [
   },
   {
     title: "📝 How to reserve Sprint slots",
-    text: "In Week View: Click and drag to select time slots. You can select multiple consecutive hours. After releasing, you'll be prompted to add an optional guest link for others to join you on screen during your sprint (optional). Then the booking is created!"
+    text: "In Week View: You can select multiple consecutive hours. Click and drag to select consecutive time slots. After releasing, you'll be prompted to add an optional guest link (see next step). Then the reservation is created! NOTE: Do not create separate reservations for consecutive hours"
   },
   {
     title: "✏️ Viewing & Editing Bookings",
-    text: "Your bookings appear in green, others in purple. Hover over any booking to see quick info (name, YouTube channel, guest join link). Click on any reservation to see full details."
+    text: "Your reservation appear in green, others in purple. Hover over any reservation to see quick info (name, YouTube channel, guest join link). Click on any reservation to see full details."
   },
   {
-    title: "🔗 Adding Guest's Join Links",
-    text: "Guest's \"Join\" links are optional and can be added when reserving a slot OR later by clicking on your reservation and selecting 'Edit Guest Join Link'. Each reservation should have its own unique join link."
+    title: "🔗 Adding 'Join' Links for Guests",
+    text: "Once you select your sprint time, you'll be prompted to add an optional guest link for others to join you on screen during your sprint. The guest's 'Join' link can be added when reserving your sprint time OR at a later by clicking on your reservation and selecting 'Edit Guest Join Link'."
   },
   {
-    title: "🗑️ Deleting Bookings",
-    text: "Click on your booking (green), then click 'Delete Booking' in the popup. This will delete the entire booking group (all consecutive hours you booked together)."
+    title: "🗑️ Deleting Reservations",
+    text: "Click on your reservation (green), then click 'Delete Reservation' in the popup. This will delete the entire reservation group (all consecutive hours you reserved together)."
   },
   {
     title: "✨ Column Highlighting",
-    text: "Click on any date header in Week View to highlight that column in yellow. This helps you make sure you're booking the right day. Click again to remove the highlight."
+    text: "Click on any date header in Week View to highlight that column in yellow. This helps you make sure you're reserving for the right day. Click again to remove the highlight."
   },
   {
     title: "🎉 You're All Set!",
