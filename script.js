@@ -512,9 +512,15 @@ function showTooltip(e, booking) {
   if (!profile) return;
   
   let content = `<strong>${profile.name}</strong><br>`;
-  content += `YouTube: <a href="${profile.youtubeUrl}" target="_blank">${profile.youtubeHandle}</a><br>`;
+  
+  // Ensure YouTube URL has protocol
+  const youtubeUrl = profile.youtubeUrl.startsWith('http') ? profile.youtubeUrl : `https://${profile.youtubeUrl}`;
+  content += `YouTube: <a href="${youtubeUrl}" target="_blank">${profile.youtubeHandle}</a><br>`;
+  
   if (booking.streamLink) {
-    content += `Stream: <a href="${booking.streamLink}" target="_blank">Watch Live</a>`;
+    // Ensure stream link has protocol
+    const streamUrl = booking.streamLink.startsWith('http') ? booking.streamLink : `https://${booking.streamLink}`;
+    content += `Stream: <a href="${streamUrl}" target="_blank">Watch Live</a>`;
   }
   
   tooltipElement.innerHTML = content;
@@ -536,13 +542,18 @@ function showBookingInfo(booking) {
   let content = '<div class="booking-info-display">';
   if (profile) {
     content += `<p><strong>Name:</strong> ${profile.name}</p>`;
-    content += `<p><strong>YouTube:</strong> <a href="${profile.youtubeUrl}" target="_blank">${profile.youtubeHandle}</a></p>`;
+    
+    // Ensure YouTube URL has protocol
+    const youtubeUrl = profile.youtubeUrl.startsWith('http') ? profile.youtubeUrl : `https://${profile.youtubeUrl}`;
+    content += `<p><strong>YouTube:</strong> <a href="${youtubeUrl}" target="_blank">${profile.youtubeHandle}</a></p>`;
   } else {
     content += `<p><strong>Name:</strong> ${booking.userName}</p>`;
   }
   
   if (booking.streamLink) {
-    content += `<p><strong>Stream:</strong> <a href="${booking.streamLink}" target="_blank">Watch Live</a></p>`;
+    // Ensure stream link has protocol
+    const streamUrl = booking.streamLink.startsWith('http') ? booking.streamLink : `https://${booking.streamLink}`;
+    content += `<p><strong>Stream:</strong> <a href="${streamUrl}" target="_blank">Watch Live</a></p>`;
   } else if (booking.userId === currentUser.id) {
     content += `<p><em>No stream link added yet</em></p>`;
   }
@@ -817,11 +828,11 @@ let tutorialSteps = [
   },
   {
     title: "👤 Edit Your Profile",
-    text: "Click 'Edit Profile' to update your name, YouTube handle, and channel URL. This information is shown to others when they view your bookings."
+    text: "Click 'Edit Profile' to update your name, YouTube handle, and channel URL. This information is shown to others when they view your reservations."
   },
   {
-    title: "📝 How to reserve Sprint slots",
-    text: "In Week View: You can select multiple consecutive hours. Click and drag to select consecutive time slots. After releasing, you'll be prompted to add an optional guest link (see next step). Then the reservation is created! NOTE: Do not create separate reservations for consecutive hours"
+    title: "📝 How To Reserve Sprint Times",
+    text: "In Week View: You can select multiple consecutive hours. Click and drag to select consecutive time slots. After releasing, you'll be prompted to add an optional guest link. Then the reservation is created! NOTE: Do not create separate reservations for consecutive hours"
   },
   {
     title: "✏️ Viewing & Editing Bookings",
@@ -829,7 +840,7 @@ let tutorialSteps = [
   },
   {
     title: "🔗 Adding 'Join' Links for Guests",
-    text: "Once you select your sprint time, you'll be prompted to add an optional guest link for others to join you on screen during your sprint. The guest's 'Join' link can be added when reserving your sprint time OR at a later by clicking on your reservation and selecting 'Edit Guest Join Link'."
+    text: "Once you select your sprint time, you'll be prompted to add an optional guest link for others to join you on screen during your sprint. The guest's 'Join' link can be added when you reseve your sprint time OR at a later time by clicking on your reservation and selecting 'Edit Guest Join Link'."
   },
   {
     title: "🗑️ Deleting Reservations",
