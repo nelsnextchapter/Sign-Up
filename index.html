@@ -3,37 +3,199 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sprint Sign Up</title>
-  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/main.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+  <title>Sprint Sign-up System</title>
+
+<!-- Firebase Scripts -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+
 </head>
 <body>
-  <header>
-    <h1>Mystic Readathon Sprint Sign Up</h1>
-    <div>
-      <label for="userName">Your Name:</label>
-      <input type="text" id="userName" placeholder="Enter your name" required>
-      </div>
-      <div>
-      <label for="timeZone">Your Time Zone (auto-detected, but you can change):</label>
-      <select id="timeZone">
-      <option value="">Loading time zones... (or select manually)</option>
-    </select>
+  <div class="container">
+    <div class="header">
+      <h1>📅 Sprint Sign-Up System</h1>
+      <p>Choose your timezone and reserve your sprint time. Click the yellow "Help" to revisit the tutorial</p>
     </div>
-  </header>
-  <main>
-    <div id="calendar"></div>
-  </main>
 
-<!-- Firebase Compat (non-modular) - MUST load BEFORE your script.js -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/12.3.0/firebase-app-compat.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/12.3.0/firebase-database-compat.min.js"></script>
+    <div id="loginSection" class="login-container">
+      <h2>Welcome! Please sign in to continue</h2>
+      <button class="google-signin-btn" onclick="signInWithGoogle()">
+        Sign in with Google
+      </button>
+    </div>
 
-<!-- FullCalendar (unchanged) -->
-<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+    <div id="appSection" style="display: none;">
+      <div class="user-info">
+        <div class="user-details">
+          <div class="user-avatar" id="userAvatar"></div>
+          <div>
+            <div style="font-weight: 600;" id="userName">
+              <span id="userNameText"></span>
+              <button class="edit-profile-btn" onclick="openProfileModal()">Edit Profile</button>
+            </div>
+            <div style="font-size: 14px; color: #666;" id="userEmail"></div>
+          </div>
+        </div>
+        <div class="timezone-selector">
+          <label for="timezoneSelect">Your Timezone:</label>
+          <select id="timezoneSelect" onchange="handleTimezoneChange()">
+            <!-- Populated by JavaScript -->
+          </select>
+        </div>
+        <button class="help-btn" onclick="openTutorialHelp()">Help</button>
+<button class="logout-btn" onclick="logout()">Logout</button>
+      </div>
 
-<!-- Your custom code - load LAST -->
-<script src="script.js"></script>
-  
+      <div class="calendar-container">
+        <div class="view-toggle">
+          <button id="monthViewBtn" class="active" onclick="switchToMonthView()">Month View</button>
+          <button id="weekViewBtn" onclick="switchToWeekView()">Week View</button>
+        </div>
+
+        <!-- Month View -->
+        <div class="month-view active" id="monthView">
+          <div class="calendar-nav">
+            <button onclick="changeMonth(-1)">← Previous Month</button>
+            <h2 id="monthDisplay"></h2>
+            <button onclick="changeMonth(1)">Next Month →</button>
+          </div>
+          <div class="month-calendar" id="monthCalendar"></div>
+        </div>
+
+        <!-- Week View -->
+        <div class="week-view" id="weekView">
+          <div class="calendar-nav">
+            <button onclick="changeWeek(-1)">← Previous Week</button>
+            <h2 id="weekDisplay"></h2>
+            <button onclick="changeWeek(1)">Next Week →</button>
+          </div>
+
+          <div class="calendar-wrapper">
+            <div class="calendar" id="calendar"></div>
+          </div>
+
+          <div class="legend">
+            <div class="legend-item">
+              <div class="legend-box available"></div>
+              <span>Available</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-box my-booking"></div>
+              <span>Your Booking</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-box other-booking"></div>
+              <span>Others' Bookings</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profile Setup Modal -->
+  <div class="modal-overlay" id="profileModal">
+    <div class="modal">
+      <h3 id="profileModalTitle">Complete Your Profile</h3>
+      <p>Please provide your information to continue.</p>
+      
+      <div class="form-group">
+        <label for="profileName">Full Name *</label>
+        <input type="text" id="profileName" required>
+      </div>
+      
+      <div class="form-group">
+        <label for="profileYoutubeHandle">YouTube Handle *</label>
+        <input type="text" id="profileYoutubeHandle" placeholder="@yourchannel" required>
+        <small>Your YouTube channel handle (e.g., @channelname)</small>
+      </div>
+      
+      <div class="form-group">
+        <label for="profileYoutubeUrl">YouTube Channel URL *</label>
+        <input type="url" id="profileYoutubeUrl" placeholder="https://youtube.com/@yourchannel" required>
+        <small>Full URL to your YouTube channel</small>
+      </div>
+
+      <div class="modal-buttons">
+        <button class="modal-btn cancel" id="profileCancelBtn" onclick="cancelProfile()" style="display: none;">Cancel</button>
+        <button class="modal-btn primary" onclick="saveProfile()">Save Profile</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stream Link Modal -->
+  <div class="modal-overlay" id="streamLinkModal">
+    <div class="modal">
+      <h3 id="streamLinkModalTitle">Add Stream Link (Optional)</h3>
+      <p id="streamLinkModalDescription">You can add your live stream link now or come back later to add it.</p>
+      
+      <div class="form-group">
+        <label for="streamLinkInput">Live Stream URL</label>
+        <input type="url" id="streamLinkInput" placeholder="https://youtube.com/live/...">
+        <small>Link to your live stream for this booking</small>
+      </div>
+
+      <div class="modal-buttons">
+        <button class="modal-btn cancel" onclick="closeStreamLinkModal()">Cancel</button>
+        <button class="modal-btn primary" onclick="saveStreamLink()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Booking Info Modal -->
+  <div class="modal-overlay" id="bookingInfoModal">
+    <div class="modal">
+      <h3>Booking Details</h3>
+      <div id="bookingInfoContent"></div>
+      <div class="modal-buttons">
+        <button class="modal-btn cancel" onclick="closeBookingInfoModal()">Close</button>
+        <button class="modal-btn delete" id="deleteBookingBtn" style="display: none;" onclick="deleteCurrentBooking()">Delete Booking</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div class="modal-overlay" id="deleteModal">
+    <div class="modal">
+      <h3>Delete Booking</h3>
+      <p id="deleteMessage"></p>
+      <div class="modal-buttons">
+        <button class="modal-btn cancel" onclick="closeDeleteModal()">Cancel</button>
+        <button class="modal-btn delete" onclick="confirmDelete()">Delete</button>
+      </div>
+    </div>
+  </div>
+
+<!-- Add this HTML right before the closing </body> tag, after all other modals -->
+<!-- Tutorial Modal -->
+<div class="tutorial-overlay" id="tutorialOverlay">
+  <div class="tutorial-modal">
+    <div class="tutorial-header">
+      <h2 id="tutorialTitle"></h2>
+    </div>
+    
+    <div class="tutorial-body">
+      <p id="tutorialText"></p>
+    </div>
+    
+    <div class="tutorial-progress" id="tutorialProgress"></div>
+    
+    <div class="tutorial-footer">
+      <label class="tutorial-checkbox">
+        <input type="checkbox" id="dontShowAgain">
+        <span>Don't show this again</span>
+      </label>
+      
+      <div class="tutorial-buttons">
+        <button class="tutorial-btn skip" onclick="skipTutorial()">Skip Tutorial</button>
+        <button class="tutorial-btn prev" id="prevBtn" onclick="previousStep()" style="display: none;">Previous</button>
+        <button class="tutorial-btn next" id="nextBtn" onclick="nextStep()">Next</button>
+        <button class="tutorial-btn finish" id="finishBtn" onclick="finishTutorial()" style="display: none;">Finish</button>
+      </div>
+    </div>
+  </div>
+</div>
 </body>
 </html>
