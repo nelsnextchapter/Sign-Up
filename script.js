@@ -1,5 +1,4 @@
-document.addEventListener('DOMContentLoaded', function () {
-	// Firebase Configuration
+// Firebase Configuration
 const firebaseConfig = {
   apiKey: "AIzaSyCIm7uCVfADnOx-AgMkNKs1nfKYEB0kbRs",
   authDomain: "sprint-sign-up.firebaseapp.com",
@@ -15,61 +14,60 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
 
+let currentUser = null;
+let currentWeekStart = null;
+let currentMonthDate = null;
+let currentView = 'month';
+let userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+let isSelecting = false;
+let selectionStart = null;
+let selectedSlots = new Set();
+let allBookings = [];
+let userProfiles = {};
+let bookingToDelete = null;
+let currentBookingGroup = null;
+let pendingBookingSlots = null;
+let currentViewingBooking = null;
+let tooltipElement = null;
+let highlightedColumn = null;
 
-    let currentUser = null;
-    let currentWeekStart = null;
-    let currentMonthDate = null;
-    let currentView = 'month';
-    let userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    let isSelecting = false;
-    let selectionStart = null;
-    let selectedSlots = new Set();
-    let allBookings = [];
-    let userProfiles = {};
-    let bookingToDelete = null;
-    let currentBookingGroup = null;
-    let pendingBookingSlots = null;
-    let currentViewingBooking = null;
-    let tooltipElement = null;
-    let highlightedColumn = null;
+const commonTimezones = [
+  'America/New_York',
+  'America/Chicago',
+  'America/Denver',
+  'America/Los_Angeles',
+  'America/Anchorage',
+  'Pacific/Honolulu',
+  'Europe/London',
+  'Europe/Paris',
+  'Europe/Berlin',
+  'Europe/Moscow',
+  'Asia/Dubai',
+  'Asia/Kolkata',
+  'Asia/Shanghai',
+  'Asia/Tokyo',
+  'Asia/Seoul',
+  'Australia/Sydney',
+  'Pacific/Auckland'
+];
 
-    const commonTimezones = [
-      'America/New_York',
-      'America/Chicago',
-      'America/Denver',
-      'America/Los_Angeles',
-      'America/Anchorage',
-      'Pacific/Honolulu',
-      'Europe/London',
-      'Europe/Paris',
-      'Europe/Berlin',
-      'Europe/Moscow',
-      'Asia/Dubai',
-      'Asia/Kolkata',
-      'Asia/Shanghai',
-      'Asia/Tokyo',
-      'Asia/Seoul',
-      'Australia/Sydney',
-      'Pacific/Auckland'
-    ];
+function init() {
+  loadBookingsFromStorage();
+  loadProfilesFromStorage();
+  populateTimezoneDropdown();
+  currentMonthDate = new Date();
+  setCurrentWeek(new Date());
+  createTooltip();
+}
 
-    function init() {
-      loadBookingsFromStorage();
-      loadProfilesFromStorage();
-      populateTimezoneDropdown();
-      currentMonthDate = new Date();
-      setCurrentWeek(new Date());
-      createTooltip();
-    }
+function createTooltip() {
+  tooltipElement = document.createElement('div');
+  tooltipElement.className = 'booking-tooltip';
+  tooltipElement.style.display = 'none';
+  document.body.appendChild(tooltipElement);
+}
 
-    function createTooltip() {
-      tooltipElement = document.createElement('div');
-      tooltipElement.className = 'booking-tooltip';
-      tooltipElement.style.display = 'none';
-      document.body.appendChild(tooltipElement);
-    }
-
-    function signInWithGoogle() {
+function signInWithGoogle() {
   const provider = new firebase.auth.GoogleAuthProvider();
   
   firebase.auth().signInWithPopup(provider)
@@ -117,656 +115,655 @@ const database = firebase.database();
     });
 }
 
-    function logout() {
-      currentUser = null;
-      document.getElementById('loginSection').style.display = 'block';
-      document.getElementById('appSection').style.display = 'none';
+function logout() {
+  currentUser = null;
+  document.getElementById('loginSection').style.display = 'block';
+  document.getElementById('appSection').style.display = 'none';
+}
+
+function openProfileModal() {
+  const profile = userProfiles[currentUser.id];
+  if (profile) {
+    document.getElementById('profileModalTitle').textContent = 'Edit Your Profile';
+    document.getElementById('profileCancelBtn').style.display = 'block';
+    document.getElementById('profileName').value = profile.name;
+    document.getElementById('profileYoutubeHandle').value = profile.youtubeHandle;
+    document.getElementById('profileYoutubeUrl').value = profile.youtubeUrl;
+  } else {
+    document.getElementById('profileName').value = currentUser.name;
+    document.getElementById('profileYoutubeHandle').value = '';
+    document.getElementById('profileYoutubeUrl').value = '';
+  }
+  document.getElementById('profileModal').classList.add('active');
+}
+
+function cancelProfile() {
+  if (userProfiles[currentUser.id]) {
+    document.getElementById('profileModal').classList.remove('active');
+  }
+}
+
+function saveProfile() {
+  const name = document.getElementById('profileName').value.trim();
+  const youtubeHandle = document.getElementById('profileYoutubeHandle').value.trim();
+  const youtubeUrl = document.getElementById('profileYoutubeUrl').value.trim();
+
+  if (!name || !youtubeHandle || !youtubeUrl) {
+    alert('Please fill in all required fields');
+    return;
+  }
+
+  userProfiles[currentUser.id] = {
+    name: name,
+    youtubeHandle: youtubeHandle,
+    youtubeUrl: youtubeUrl
+  };
+
+  saveProfilesToStorage();
+  document.getElementById('userNameText').textContent = name;
+  document.getElementById('profileModal').classList.remove('active');
+
+  // Initialize dates if first time saving profile
+  if (!currentMonthDate) {
+    currentMonthDate = new Date();
+  }
+  if (!currentWeekStart) {
+    setCurrentWeek(new Date());
+  }
+
+  if (currentView === 'month') {
+    renderMonthView();
+  } else {
+    renderCalendar();
+  }
+  
+  // Show tutorial if it's the user's first time and they haven't disabled it
+  shouldShowTutorial().then(shouldShow => {
+    if (shouldShow) {
+      showTutorial();
     }
+  });
+}
 
-    function openProfileModal() {
-      const profile = userProfiles[currentUser.id];
-      if (profile) {
-        document.getElementById('profileModalTitle').textContent = 'Edit Your Profile';
-        document.getElementById('profileCancelBtn').style.display = 'block';
-        document.getElementById('profileName').value = profile.name;
-        document.getElementById('profileYoutubeHandle').value = profile.youtubeHandle;
-        document.getElementById('profileYoutubeUrl').value = profile.youtubeUrl;
-      } else {
-        document.getElementById('profileName').value = currentUser.name;
-        document.getElementById('profileYoutubeHandle').value = '';
-        document.getElementById('profileYoutubeUrl').value = '';
-      }
-      document.getElementById('profileModal').classList.add('active');
+function populateTimezoneDropdown() {
+  const select = document.getElementById('timezoneSelect');
+  select.innerHTML = '';
+  
+  commonTimezones.forEach(tz => {
+    const option = document.createElement('option');
+    option.value = tz;
+    option.textContent = tz.replace(/_/g, ' ');
+    if (tz === userTimezone) {
+      option.selected = true;
     }
+    select.appendChild(option);
+  });
+  
+  if (!commonTimezones.includes(userTimezone)) {
+    const option = document.createElement('option');
+    option.value = userTimezone;
+    option.textContent = userTimezone.replace(/_/g, ' ') + ' (Detected)';
+    option.selected = true;
+    select.insertBefore(option, select.firstChild);
+  }
+}
 
-    function cancelProfile() {
-      if (userProfiles[currentUser.id]) {
-        document.getElementById('profileModal').classList.remove('active');
-      }
-    }
+function handleTimezoneChange() {
+  userTimezone = document.getElementById('timezoneSelect').value;
+  if (currentView === 'month') {
+    renderMonthView();
+  } else {
+    renderCalendar();
+  }
+}
 
-    function saveProfile() {
-      const name = document.getElementById('profileName').value.trim();
-      const youtubeHandle = document.getElementById('profileYoutubeHandle').value.trim();
-      const youtubeUrl = document.getElementById('profileYoutubeUrl').value.trim();
-
-      if (!name || !youtubeHandle || !youtubeUrl) {
-        alert('Please fill in all required fields');
-        return;
-      }
-
-      userProfiles[currentUser.id] = {
-        name: name,
-        youtubeHandle: youtubeHandle,
-        youtubeUrl: youtubeUrl
-      };
-
-      saveProfilesToStorage();
-      document.getElementById('userNameText').textContent = name;
-      document.getElementById('profileModal').classList.remove('active');
-
-      // Initialize dates if first time saving profile
-      if (!currentMonthDate) {
-        currentMonthDate = new Date();
-      }
-      if (!currentWeekStart) {
-        setCurrentWeek(new Date());
-      }
-
-	if (currentView === 'month') {
+function switchToMonthView() {
+  currentView = 'month';
+  document.getElementById('monthView').classList.add('active');
+  document.getElementById('weekView').classList.remove('active');
+  document.getElementById('monthViewBtn').classList.add('active');
+  document.getElementById('weekViewBtn').classList.remove('active');
   renderMonthView();
-} else {
+}
+
+function switchToWeekView() {
+  currentView = 'week';
+  document.getElementById('monthView').classList.remove('active');
+  document.getElementById('weekView').classList.add('active');
+  document.getElementById('monthViewBtn').classList.remove('active');
+  document.getElementById('weekViewBtn').classList.add('active');
   renderCalendar();
 }
-// Show tutorial if it's the user's first time and they haven't disabled it
-	shouldShowTutorial().then(shouldShow => {
-  if (shouldShow) {
-    showTutorial();
+
+function changeMonth(direction) {
+  if (!currentMonthDate) {
+    currentMonthDate = new Date();
   }
-});
-    }
+  currentMonthDate.setMonth(currentMonthDate.getMonth() + direction);
+  renderMonthView();
+}
 
-    function populateTimezoneDropdown() {
-      const select = document.getElementById('timezoneSelect');
-      select.innerHTML = '';
-      
-      commonTimezones.forEach(tz => {
-        const option = document.createElement('option');
-        option.value = tz;
-        option.textContent = tz.replace(/_/g, ' ');
-        if (tz === userTimezone) {
-          option.selected = true;
-        }
-        select.appendChild(option);
-      });
-      
-      if (!commonTimezones.includes(userTimezone)) {
-        const option = document.createElement('option');
-        option.value = userTimezone;
-        option.textContent = userTimezone.replace(/_/g, ' ') + ' (Detected)';
-        option.selected = true;
-        select.insertBefore(option, select.firstChild);
+function renderMonthView() {
+  if (!currentUser) return;
+  
+  if (!currentMonthDate) {
+    currentMonthDate = new Date();
+  }
+  
+  const year = currentMonthDate.getFullYear();
+  const month = currentMonthDate.getMonth();
+  
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                      'July', 'August', 'September', 'October', 'November', 'December'];
+  
+  document.getElementById('monthDisplay').textContent = `${monthNames[month]} ${year}`;
+  
+  const monthCalendar = document.getElementById('monthCalendar');
+  monthCalendar.innerHTML = '';
+  
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  days.forEach(day => {
+    const header = document.createElement('div');
+    header.className = 'month-day-header';
+    header.textContent = day;
+    monthCalendar.appendChild(header);
+  });
+  
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const daysInPrevMonth = new Date(year, month, 0).getDate();
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  for (let i = firstDay - 1; i >= 0; i--) {
+    const day = daysInPrevMonth - i;
+    const dayDiv = document.createElement('div');
+    dayDiv.className = 'month-day other-month';
+    dayDiv.innerHTML = `<div class="month-day-number">${day}</div>`;
+    monthCalendar.appendChild(dayDiv);
+  }
+  
+  for (let day = 1; day <= daysInMonth; day++) {
+    const date = new Date(year, month, day);
+    date.setHours(0, 0, 0, 0);
+    
+    const dayDiv = document.createElement('div');
+    dayDiv.className = 'month-day';
+    
+    if (date.getTime() === today.getTime()) {
+      dayDiv.classList.add('today');
+    }
+    
+    const bookingsOnDay = getBookingsForDay(date);
+    const hasMyBookings = bookingsOnDay.some(b => b.userId === currentUser.id);
+    
+    let bookingHTML = '';
+    if (bookingsOnDay.length > 0) {
+      const indicator = hasMyBookings ? 'has-my-bookings' : 'has-bookings';
+      bookingHTML = `<div class="month-day-bookings">
+        <span class="booking-indicator ${indicator}"></span>
+        ${bookingsOnDay.length} booking${bookingsOnDay.length > 1 ? 's' : ''}
+      </div>`;
+    }
+    
+    dayDiv.innerHTML = `
+      <div class="month-day-number">${day}</div>
+      ${bookingHTML}
+    `;
+    
+    dayDiv.onclick = () => jumpToWeek(date);
+    monthCalendar.appendChild(dayDiv);
+  }
+  
+  const totalCells = monthCalendar.children.length - 7;
+  const remainingCells = 35 - totalCells;
+  for (let day = 1; day <= remainingCells; day++) {
+    const dayDiv = document.createElement('div');
+    dayDiv.className = 'month-day other-month';
+    dayDiv.innerHTML = `<div class="month-day-number">${day}</div>`;
+    monthCalendar.appendChild(dayDiv);
+  }
+}
+
+function getBookingsForDay(date) {
+  const startOfDay = new Date(date);
+  startOfDay.setHours(0, 0, 0, 0);
+  const startUTC = localDateToUTC(startOfDay, userTimezone);
+  
+  const endOfDay = new Date(date);
+  endOfDay.setHours(23, 59, 59, 999);
+  const endUTC = localDateToUTC(endOfDay, userTimezone);
+  
+  const uniqueBookings = {};
+  allBookings.forEach(booking => {
+    const bookingTime = new Date(booking.dateTimeUTC).getTime();
+    if (bookingTime >= new Date(startUTC).getTime() && 
+        bookingTime <= new Date(endUTC).getTime()) {
+      if (!uniqueBookings[booking.groupId]) {
+        uniqueBookings[booking.groupId] = booking;
       }
     }
+  });
+  
+  return Object.values(uniqueBookings);
+}
 
-    function handleTimezoneChange() {
-      userTimezone = document.getElementById('timezoneSelect').value;
-      if (currentView === 'month') {
-        renderMonthView();
+function jumpToWeek(date) {
+  setCurrentWeek(date);
+  switchToWeekView();
+  // Highlight the clicked day's column
+  const dayOfWeek = date.getDay();
+  highlightColumn(dayOfWeek);
+}
+
+function setCurrentWeek(date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day;
+  currentWeekStart = new Date(d.setDate(diff));
+  currentWeekStart.setHours(0, 0, 0, 0);
+  if (currentView === 'week') {
+    renderCalendar();
+  }
+}
+
+function changeWeek(direction) {
+  const newDate = new Date(currentWeekStart);
+  newDate.setDate(newDate.getDate() + (direction * 7));
+  setCurrentWeek(newDate);
+  // Clear highlight when changing weeks
+  highlightColumn(null);
+}
+
+function renderCalendar() {
+  if (!currentUser) return;
+  
+  if (!currentWeekStart) {
+    setCurrentWeek(new Date());
+    return;
+  }
+  
+  const calendar = document.getElementById('calendar');
+  calendar.innerHTML = '';
+  
+  const endDate = new Date(currentWeekStart);
+  endDate.setDate(endDate.getDate() + 6);
+  document.getElementById('weekDisplay').textContent = 
+    `${formatDate(currentWeekStart)} - ${formatDate(endDate)}`;
+  
+  const emptyHeader = document.createElement('div');
+  emptyHeader.className = 'calendar-header';
+  emptyHeader.textContent = 'Time';
+  calendar.appendChild(emptyHeader);
+  
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(currentWeekStart);
+    date.setDate(date.getDate() + i);
+    const header = document.createElement('div');
+    header.className = 'calendar-header';
+    header.textContent = `${days[i]} ${date.getMonth() + 1}/${date.getDate()}`;
+    header.dataset.dayIndex = i;
+    header.style.cursor = 'pointer';
+    
+    // Add click handler to toggle highlight
+    header.addEventListener('click', () => {
+      if (highlightedColumn === i) {
+        highlightColumn(null); // Remove highlight if clicking same column
       } else {
-        renderCalendar();
+        highlightColumn(i);
       }
+    });
+    
+    // Apply highlight if this is the highlighted column
+    if (highlightedColumn === i) {
+      header.classList.add('highlighted-column');
     }
-
-    function switchToMonthView() {
-      currentView = 'month';
-      document.getElementById('monthView').classList.add('active');
-      document.getElementById('weekView').classList.remove('active');
-      document.getElementById('monthViewBtn').classList.add('active');
-      document.getElementById('weekViewBtn').classList.remove('active');
-      renderMonthView();
-    }
-
-    function switchToWeekView() {
-      currentView = 'week';
-      document.getElementById('monthView').classList.remove('active');
-      document.getElementById('weekView').classList.add('active');
-      document.getElementById('monthViewBtn').classList.remove('active');
-      document.getElementById('weekViewBtn').classList.add('active');
-      renderCalendar();
-    }
-
-    function changeMonth(direction) {
-      if (!currentMonthDate) {
-        currentMonthDate = new Date();
-      }
-      currentMonthDate.setMonth(currentMonthDate.getMonth() + direction);
-      renderMonthView();
-    }
-
-    function renderMonthView() {
-      if (!currentUser) return;
+    
+    calendar.appendChild(header);
+  }
+  
+  for (let hour = 0; hour < 24; hour++) {
+    const timeLabel = document.createElement('div');
+    timeLabel.className = 'time-label';
+    timeLabel.textContent = formatHour(hour);
+    calendar.appendChild(timeLabel);
+    
+    for (let day = 0; day < 7; day++) {
+      const slot = document.createElement('div');
+      slot.className = 'calendar-slot';
       
-      if (!currentMonthDate) {
-        currentMonthDate = new Date();
-      }
+      const localDate = new Date(currentWeekStart);
+      localDate.setDate(localDate.getDate() + day);
+      localDate.setHours(hour, 0, 0, 0);
       
-      const year = currentMonthDate.getFullYear();
-      const month = currentMonthDate.getMonth();
+      const slotDateUTC = localDateToUTC(localDate, userTimezone);
       
-      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-                          'July', 'August', 'September', 'October', 'November', 'December'];
+      const slotId = `${day}-${hour}`;
+      slot.dataset.slotId = slotId;
+      slot.dataset.dateUtc = slotDateUTC;
+      slot.dataset.dayIndex = day;
       
-      document.getElementById('monthDisplay').textContent = `${monthNames[month]} ${year}`;
-      
-      const monthCalendar = document.getElementById('monthCalendar');
-      monthCalendar.innerHTML = '';
-      
-      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-      days.forEach(day => {
-        const header = document.createElement('div');
-        header.className = 'month-day-header';
-        header.textContent = day;
-        monthCalendar.appendChild(header);
-      });
-      
-      const firstDay = new Date(year, month, 1).getDay();
-      const daysInMonth = new Date(year, month + 1, 0).getDate();
-      const daysInPrevMonth = new Date(year, month, 0).getDate();
-      
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      for (let i = firstDay - 1; i >= 0; i--) {
-        const day = daysInPrevMonth - i;
-        const dayDiv = document.createElement('div');
-        dayDiv.className = 'month-day other-month';
-        dayDiv.innerHTML = `<div class="month-day-number">${day}</div>`;
-        monthCalendar.appendChild(dayDiv);
+      // Apply highlight if this is the highlighted column
+      if (highlightedColumn === day) {
+        slot.classList.add('highlighted-column');
       }
       
-      for (let day = 1; day <= daysInMonth; day++) {
-        const date = new Date(year, month, day);
-        date.setHours(0, 0, 0, 0);
-        
-        const dayDiv = document.createElement('div');
-        dayDiv.className = 'month-day';
-        
-        if (date.getTime() === today.getTime()) {
-          dayDiv.classList.add('today');
+      const booking = getBookingForSlot(slotDateUTC);
+      
+      if (booking) {
+        slot.classList.add('booked');
+        const isMyBooking = booking.userId === currentUser.id;
+        if (isMyBooking) {
+          slot.classList.add('my-booking');
         }
         
-        const bookingsOnDay = getBookingsForDay(date);
-        const hasMyBookings = bookingsOnDay.some(b => b.userId === currentUser.id);
+        const groupBookings = allBookings.filter(b => b.groupId === booking.groupId)
+          .sort((a, b) => new Date(a.dateTimeUTC) - new Date(b.dateTimeUTC));
         
-        let bookingHTML = '';
-        if (bookingsOnDay.length > 0) {
-          const indicator = hasMyBookings ? 'has-my-bookings' : 'has-bookings';
-          bookingHTML = `<div class="month-day-bookings">
-            <span class="booking-indicator ${indicator}"></span>
-            ${bookingsOnDay.length} booking${bookingsOnDay.length > 1 ? 's' : ''}
-          </div>`;
-        }
+        const bookingIndex = groupBookings.findIndex(b => 
+          Math.abs(new Date(b.dateTimeUTC).getTime() - new Date(booking.dateTimeUTC).getTime()) < 60000
+        );
         
-        dayDiv.innerHTML = `
-          <div class="month-day-number">${day}</div>
-          ${bookingHTML}
-        `;
-        
-        dayDiv.onclick = () => jumpToWeek(date);
-        monthCalendar.appendChild(dayDiv);
-      }
-      
-      const totalCells = monthCalendar.children.length - 7;
-      const remainingCells = 35 - totalCells;
-      for (let day = 1; day <= remainingCells; day++) {
-        const dayDiv = document.createElement('div');
-        dayDiv.className = 'month-day other-month';
-        dayDiv.innerHTML = `<div class="month-day-number">${day}</div>`;
-        monthCalendar.appendChild(dayDiv);
-      }
-    }
-
-    function getBookingsForDay(date) {
-      const startOfDay = new Date(date);
-      startOfDay.setHours(0, 0, 0, 0);
-      const startUTC = localDateToUTC(startOfDay, userTimezone);
-      
-      const endOfDay = new Date(date);
-      endOfDay.setHours(23, 59, 59, 999);
-      const endUTC = localDateToUTC(endOfDay, userTimezone);
-      
-      const uniqueBookings = {};
-      allBookings.forEach(booking => {
-        const bookingTime = new Date(booking.dateTimeUTC).getTime();
-        if (bookingTime >= new Date(startUTC).getTime() && 
-            bookingTime <= new Date(endUTC).getTime()) {
-          if (!uniqueBookings[booking.groupId]) {
-            uniqueBookings[booking.groupId] = booking;
-          }
-        }
-      });
-      
-      return Object.values(uniqueBookings);
-    }
-
-    function jumpToWeek(date) {
-      setCurrentWeek(date);
-      switchToWeekView();
-      // Highlight the clicked day's column
-      const dayOfWeek = date.getDay();
-      highlightColumn(dayOfWeek);
-    }
-
-    function setCurrentWeek(date) {
-      const d = new Date(date);
-      const day = d.getDay();
-      const diff = d.getDate() - day;
-      currentWeekStart = new Date(d.setDate(diff));
-      currentWeekStart.setHours(0, 0, 0, 0);
-      if (currentView === 'week') {
-        renderCalendar();
-      }
-    }
-
-    function changeWeek(direction) {
-      const newDate = new Date(currentWeekStart);
-      newDate.setDate(newDate.getDate() + (direction * 7));
-      setCurrentWeek(newDate);
-      // Clear highlight when changing weeks
-      highlightColumn(null);
-    }
-
-    function renderCalendar() {
-      if (!currentUser) return;
-      
-      if (!currentWeekStart) {
-        setCurrentWeek(new Date());
-        return;
-      }
-      
-      const calendar = document.getElementById('calendar');
-      calendar.innerHTML = '';
-      
-      const endDate = new Date(currentWeekStart);
-      endDate.setDate(endDate.getDate() + 6);
-      document.getElementById('weekDisplay').textContent = 
-        `${formatDate(currentWeekStart)} - ${formatDate(endDate)}`;
-      
-      const emptyHeader = document.createElement('div');
-      emptyHeader.className = 'calendar-header';
-      emptyHeader.textContent = 'Time';
-      calendar.appendChild(emptyHeader);
-      
-      const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-      for (let i = 0; i < 7; i++) {
-        const date = new Date(currentWeekStart);
-        date.setDate(date.getDate() + i);
-        const header = document.createElement('div');
-        header.className = 'calendar-header';
-        header.textContent = `${days[i]} ${date.getMonth() + 1}/${date.getDate()}`;
-        header.dataset.dayIndex = i;
-        header.style.cursor = 'pointer';
-        
-
-       
- // Add click handler to toggle highlight
-        header.addEventListener('click', () => {
-          if (highlightedColumn === i) {
-            highlightColumn(null); // Remove highlight if clicking same column
-          } else {
-            highlightColumn(i);
-          }
-        });
-        
-        // Apply highlight if this is the highlighted column
-        if (highlightedColumn === i) {
-          header.classList.add('highlighted-column');
-        }
-        
-        calendar.appendChild(header);
-      }
-      
-      for (let hour = 0; hour < 24; hour++) {
-        const timeLabel = document.createElement('div');
-        timeLabel.className = 'time-label';
-        timeLabel.textContent = formatHour(hour);
-        calendar.appendChild(timeLabel);
-        
-        for (let day = 0; day < 7; day++) {
-          const slot = document.createElement('div');
-          slot.className = 'calendar-slot';
-          
-          const localDate = new Date(currentWeekStart);
-          localDate.setDate(localDate.getDate() + day);
-          localDate.setHours(hour, 0, 0, 0);
-          
-          const slotDateUTC = localDateToUTC(localDate, userTimezone);
-          
-          const slotId = `${day}-${hour}`;
-          slot.dataset.slotId = slotId;
-          slot.dataset.dateUtc = slotDateUTC;
-          slot.dataset.dayIndex = day;
-          
-          // Apply highlight if this is the highlighted column
-          if (highlightedColumn === day) {
-            slot.classList.add('highlighted-column');
-          }
-          
-          const booking = getBookingForSlot(slotDateUTC);
-          
-          if (booking) {
-            slot.classList.add('booked');
-            const isMyBooking = booking.userId === currentUser.id;
-            if (isMyBooking) {
-              slot.classList.add('my-booking');
-            }
-            
-            const groupBookings = allBookings.filter(b => b.groupId === booking.groupId)
-              .sort((a, b) => new Date(a.dateTimeUTC) - new Date(b.dateTimeUTC));
-            
-            const bookingIndex = groupBookings.findIndex(b => 
-              Math.abs(new Date(b.dateTimeUTC).getTime() - new Date(booking.dateTimeUTC).getTime()) < 60000
-            );
-            
-            if (bookingIndex === 0) {
-              slot.classList.add('booking-start');
-              const profile = userProfiles[booking.userId];
-              slot.innerHTML = `<span class="slot-name">${profile ? profile.name : booking.userName}</span>`;
-            } else if (bookingIndex === groupBookings.length - 1) {
-              slot.classList.add('booking-end');
-              slot.classList.add('booking-middle');
-            } else {
-              slot.classList.add('booking-middle');
-            }
-            
-            slot.dataset.bookingId = booking.id;
-            slot.dataset.groupId = booking.groupId;
-            
-            slot.addEventListener('mouseenter', (e) => showTooltip(e, booking));
-            slot.addEventListener('mouseleave', hideTooltip);
-            slot.addEventListener('click', (e) => showBookingInfo(booking));
-          } else {
-            slot.addEventListener('mousedown', (e) => startSelection(e, slotId));
-            slot.addEventListener('mouseenter', () => continueSelection(slotId));
-            slot.addEventListener('mouseup', () => endSelection());
-          }
-          
-          calendar.appendChild(slot);
-        }
-      }
-    }
-
-    function highlightColumn(dayIndex) {
-      highlightedColumn = dayIndex;
-      
-      // Update all calendar slots and headers
-      document.querySelectorAll('.calendar-header, .calendar-slot').forEach(element => {
-        element.classList.remove('highlighted-column');
-        
-        if (dayIndex !== null && element.dataset.dayIndex == dayIndex) {
-          element.classList.add('highlighted-column');
-        }
-      });
-    }
-
-    function showTooltip(e, booking) {
-      const profile = userProfiles[booking.userId];
-      if (!profile) return;
-      
-      let content = `<strong>${profile.name}</strong><br>`;
-      content += `YouTube: <a href="${profile.youtubeUrl}" target="_blank">${profile.youtubeHandle}</a><br>`;
-      if (booking.streamLink) {
-        content += `Stream: <a href="${booking.streamLink}" target="_blank">Watch Live</a>`;
-      }
-      
-      tooltipElement.innerHTML = content;
-      tooltipElement.style.display = 'block';
-      
-      const rect = e.target.getBoundingClientRect();
-      tooltipElement.style.left = rect.left + 'px';
-      tooltipElement.style.top = (rect.top - tooltipElement.offsetHeight - 10) + 'px';
-    }
-
-    function hideTooltip() {
-      tooltipElement.style.display = 'none';
-    }
-
-    function showBookingInfo(booking) {
-      currentViewingBooking = booking;
-      const profile = userProfiles[booking.userId];
-      
-      let content = '<div class="booking-info-display">';
-      if (profile) {
-        content += `<p><strong>Name:</strong> ${profile.name}</p>`;
-        content += `<p><strong>YouTube:</strong> <a href="${profile.youtubeUrl}" target="_blank">${profile.youtubeHandle}</a></p>`;
-      } else {
-        content += `<p><strong>Name:</strong> ${booking.userName}</p>`;
-      }
-      
-      if (booking.streamLink) {
-        content += `<p><strong>Stream:</strong> <a href="${booking.streamLink}" target="_blank">Watch Live</a></p>`;
-      } else if (booking.userId === currentUser.id) {
-        content += `<p><em>No stream link added yet</em></p>`;
-      }
-      content += '</div>';
-      
-      if (booking.userId === currentUser.id) {
-        content += '<button class="modal-btn primary" onclick="editStreamLink()" style="margin-bottom: 10px; width: 100%;">Edit Stream Link</button>';
-        document.getElementById('deleteBookingBtn').style.display = 'block';
-      } else {
-        document.getElementById('deleteBookingBtn').style.display = 'none';
-      }
-      
-      document.getElementById('bookingInfoContent').innerHTML = content;
-      document.getElementById('bookingInfoModal').classList.add('active');
-    }
-
-    function editStreamLink() {
-      document.getElementById('bookingInfoModal').classList.remove('active');
-      document.getElementById('streamLinkModalTitle').textContent = 'Edit Stream Link';
-      document.getElementById('streamLinkModalDescription').textContent = 'Update your live stream link for this booking.';
-      document.getElementById('streamLinkInput').value = currentViewingBooking.streamLink || '';
-      currentBookingGroup = currentViewingBooking.groupId;
-      document.getElementById('streamLinkModal').classList.add('active');
-    }
-
-    function closeStreamLinkModal() {
-      document.getElementById('streamLinkModal').classList.remove('active');
-      currentBookingGroup = null;
-      pendingBookingSlots = null;
-      // Reset modal text to default
-      document.getElementById('streamLinkModalTitle').textContent = 'Add Stream Link (Optional)';
-      document.getElementById('streamLinkModalDescription').textContent = 'You can add your live stream link now or come back later to add it.';
-    }
-
-    function closeBookingInfoModal() {
-      document.getElementById('bookingInfoModal').classList.remove('active');
-      currentViewingBooking = null;
-    }
-
-    function deleteCurrentBooking() {
-      if (currentViewingBooking) {
-        showDeleteModal(currentViewingBooking.groupId);
-        closeBookingInfoModal();
-      }
-    }
-
-    function localDateToUTC(localDate, timezone) {
-      const year = localDate.getFullYear();
-      const month = localDate.getMonth() + 1;
-      const day = localDate.getDate();
-      const hour = localDate.getHours();
-      const min = localDate.getMinutes();
-      
-      const isoString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}:00`;
-      
-      const tempDate = new Date(isoString);
-      const utcDate = new Date(tempDate.toLocaleString('en-US', { timeZone: 'UTC' }));
-      const tzDate = new Date(tempDate.toLocaleString('en-US', { timeZone: timezone }));
-      const offset = utcDate.getTime() - tzDate.getTime();
-      
-      const trueUTC = new Date(tempDate.getTime() + offset);
-      return trueUTC.toISOString();
-    }
-
-    function getBookingForSlot(utcString) {
-      const slotTime = new Date(utcString).getTime();
-      
-      return allBookings.find(booking => {
-        const bookingTime = new Date(booking.dateTimeUTC).getTime();
-        return Math.abs(bookingTime - slotTime) < 60000;
-      });
-    }
-
-    function showDeleteModal(groupId) {
-      const groupBookings = allBookings.filter(b => b.groupId === groupId);
-      bookingToDelete = groupId;
-      document.getElementById('deleteMessage').textContent = 
-        `Are you sure you want to delete this booking? (${groupBookings.length} time slot${groupBookings.length > 1 ? 's' : ''})`;
-      document.getElementById('deleteModal').classList.add('active');
-    }
-
-    function closeDeleteModal() {
-      bookingToDelete = null;
-      document.getElementById('deleteModal').classList.remove('active');
-    }
-
-    function confirmDelete() {
-      if (bookingToDelete) {
-        allBookings = allBookings.filter(b => b.groupId !== bookingToDelete);
-        saveBookingsToStorage();
-        closeDeleteModal();
-        if (currentView === 'month') {
-          renderMonthView();
+        if (bookingIndex === 0) {
+          slot.classList.add('booking-start');
+          const profile = userProfiles[booking.userId];
+          slot.innerHTML = `<span class="slot-name">${profile ? profile.name : booking.userName}</span>`;
+        } else if (bookingIndex === groupBookings.length - 1) {
+          slot.classList.add('booking-end');
+          slot.classList.add('booking-middle');
         } else {
-          renderCalendar();
+          slot.classList.add('booking-middle');
         }
-      }
-    }
-
-    function startSelection(e, slotId) {
-      e.preventDefault();
-      isSelecting = true;
-      selectionStart = slotId;
-      selectedSlots.clear();
-      selectedSlots.add(slotId);
-      updateSelectionDisplay();
-    }
-
-    function continueSelection(slotId) {
-      if (!isSelecting) return;
-      
-      const [startDay, startHour] = selectionStart.split('-').map(Number);
-      const [currentDay, currentHour] = slotId.split('-').map(Number);
-      
-      if (startDay !== currentDay) return;
-      
-      selectedSlots.clear();
-      const minHour = Math.min(startHour, currentHour);
-      const maxHour = Math.max(startHour, currentHour);
-      
-      for (let h = minHour; h <= maxHour; h++) {
-        selectedSlots.add(`${startDay}-${h}`);
+        
+        slot.dataset.bookingId = booking.id;
+        slot.dataset.groupId = booking.groupId;
+        
+        slot.addEventListener('mouseenter', (e) => showTooltip(e, booking));
+        slot.addEventListener('mouseleave', hideTooltip);
+        slot.addEventListener('click', (e) => showBookingInfo(booking));
+      } else {
+        slot.addEventListener('mousedown', (e) => startSelection(e, slotId));
+        slot.addEventListener('mouseenter', () => continueSelection(slotId));
+        slot.addEventListener('mouseup', () => endSelection());
       }
       
-      updateSelectionDisplay();
+      calendar.appendChild(slot);
     }
+  }
+}
 
-    function endSelection() {
-      if (!isSelecting) return;
-      isSelecting = false;
-      
-      if (selectedSlots.size > 0) {
-        pendingBookingSlots = Array.from(selectedSlots);
-        document.getElementById('streamLinkModalTitle').textContent = 'Add Stream Link (Optional)';
-        document.getElementById('streamLinkModalDescription').textContent = 'You can add your live stream link now or come back later to add it.';
-        document.getElementById('streamLinkInput').value = '';
-        document.getElementById('streamLinkModal').classList.add('active');
-      }
-      
-      selectedSlots.clear();
-      updateSelectionDisplay();
+function highlightColumn(dayIndex) {
+  highlightedColumn = dayIndex;
+  
+  // Update all calendar slots and headers
+  document.querySelectorAll('.calendar-header, .calendar-slot').forEach(element => {
+    element.classList.remove('highlighted-column');
+    
+    if (dayIndex !== null && element.dataset.dayIndex == dayIndex) {
+      element.classList.add('highlighted-column');
     }
+  });
+}
 
-    function updateSelectionDisplay() {
-      document.querySelectorAll('.calendar-slot').forEach(slot => {
-        slot.classList.remove('selecting');
-        if (selectedSlots.has(slot.dataset.slotId) && !slot.classList.contains('booked')) {
-          slot.classList.add('selecting');
-        }
-      });
-    }
+function showTooltip(e, booking) {
+  const profile = userProfiles[booking.userId];
+  if (!profile) return;
+  
+  let content = `<strong>${profile.name}</strong><br>`;
+  content += `YouTube: <a href="${profile.youtubeUrl}" target="_blank">${profile.youtubeHandle}</a><br>`;
+  if (booking.streamLink) {
+    content += `Stream: <a href="${booking.streamLink}" target="_blank">Watch Live</a>`;
+  }
+  
+  tooltipElement.innerHTML = content;
+  tooltipElement.style.display = 'block';
+  
+  const rect = e.target.getBoundingClientRect();
+  tooltipElement.style.left = rect.left + 'px';
+  tooltipElement.style.top = (rect.top - tooltipElement.offsetHeight - 10) + 'px';
+}
 
-    function saveStreamLink() {
-      const streamLink = document.getElementById('streamLinkInput').value.trim();
-      
-      if (currentBookingGroup) {
-        // Editing existing booking
-        allBookings.forEach(booking => {
-          if (booking.groupId === currentBookingGroup) {
-            booking.streamLink = streamLink;
-          }
-        });
-        saveBookingsToStorage();
-        closeStreamLinkModal();
-        renderCalendar();
-      } else if (pendingBookingSlots) {
-        // Creating new booking
-        createBookings(streamLink);
-        closeStreamLinkModal();
-      }
-    }
+function hideTooltip() {
+  tooltipElement.style.display = 'none';
+}
 
-    function createBookings(streamLink) {
-      const groupId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-      
-      pendingBookingSlots.forEach(slotId => {
-        const slot = document.querySelector(`[data-slot-id="${slotId}"]`);
-        if (slot && !slot.classList.contains('booked')) {
-          const utcString = slot.dataset.dateUtc;
-          
-          const booking = {
-            id: Date.now() + '-' + Math.random().toString(36).substr(2, 9),
-            groupId: groupId,
-            userId: currentUser.id,
-            userName: userProfiles[currentUser.id]?.name || currentUser.name,
-            userEmail: currentUser.email,
-            dateTimeUTC: utcString,
-            streamLink: streamLink,
-            createdAt: new Date().toISOString()
-          };
-          
-          allBookings.push(booking);
-        }
-      });
-      
-      saveBookingsToStorage();
+function showBookingInfo(booking) {
+  currentViewingBooking = booking;
+  const profile = userProfiles[booking.userId];
+  
+  let content = '<div class="booking-info-display">';
+  if (profile) {
+    content += `<p><strong>Name:</strong> ${profile.name}</p>`;
+    content += `<p><strong>YouTube:</strong> <a href="${profile.youtubeUrl}" target="_blank">${profile.youtubeHandle}</a></p>`;
+  } else {
+    content += `<p><strong>Name:</strong> ${booking.userName}</p>`;
+  }
+  
+  if (booking.streamLink) {
+    content += `<p><strong>Stream:</strong> <a href="${booking.streamLink}" target="_blank">Watch Live</a></p>`;
+  } else if (booking.userId === currentUser.id) {
+    content += `<p><em>No stream link added yet</em></p>`;
+  }
+  content += '</div>';
+  
+  if (booking.userId === currentUser.id) {
+    content += '<button class="modal-btn primary" onclick="editStreamLink()" style="margin-bottom: 10px; width: 100%;">Edit Stream Link</button>';
+    document.getElementById('deleteBookingBtn').style.display = 'block';
+  } else {
+    document.getElementById('deleteBookingBtn').style.display = 'none';
+  }
+  
+  document.getElementById('bookingInfoContent').innerHTML = content;
+  document.getElementById('bookingInfoModal').classList.add('active');
+}
+
+function editStreamLink() {
+  document.getElementById('bookingInfoModal').classList.remove('active');
+  document.getElementById('streamLinkModalTitle').textContent = 'Edit Stream Link';
+  document.getElementById('streamLinkModalDescription').textContent = 'Update your live stream link for this booking.';
+  document.getElementById('streamLinkInput').value = currentViewingBooking.streamLink || '';
+  currentBookingGroup = currentViewingBooking.groupId;
+  document.getElementById('streamLinkModal').classList.add('active');
+}
+
+function closeStreamLinkModal() {
+  document.getElementById('streamLinkModal').classList.remove('active');
+  currentBookingGroup = null;
+  pendingBookingSlots = null;
+  // Reset modal text to default
+  document.getElementById('streamLinkModalTitle').textContent = 'Add Stream Link (Optional)';
+  document.getElementById('streamLinkModalDescription').textContent = 'You can add your live stream link now or come back later to add it.';
+}
+
+function closeBookingInfoModal() {
+  document.getElementById('bookingInfoModal').classList.remove('active');
+  currentViewingBooking = null;
+}
+
+function deleteCurrentBooking() {
+  if (currentViewingBooking) {
+    showDeleteModal(currentViewingBooking.groupId);
+    closeBookingInfoModal();
+  }
+}
+
+function localDateToUTC(localDate, timezone) {
+  const year = localDate.getFullYear();
+  const month = localDate.getMonth() + 1;
+  const day = localDate.getDate();
+  const hour = localDate.getHours();
+  const min = localDate.getMinutes();
+  
+  const isoString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}:00`;
+  
+  const tempDate = new Date(isoString);
+  const utcDate = new Date(tempDate.toLocaleString('en-US', { timeZone: 'UTC' }));
+  const tzDate = new Date(tempDate.toLocaleString('en-US', { timeZone: timezone }));
+  const offset = utcDate.getTime() - tzDate.getTime();
+  
+  const trueUTC = new Date(tempDate.getTime() + offset);
+  return trueUTC.toISOString();
+}
+
+function getBookingForSlot(utcString) {
+  const slotTime = new Date(utcString).getTime();
+  
+  return allBookings.find(booking => {
+    const bookingTime = new Date(booking.dateTimeUTC).getTime();
+    return Math.abs(bookingTime - slotTime) < 60000;
+  });
+}
+
+function showDeleteModal(groupId) {
+  const groupBookings = allBookings.filter(b => b.groupId === groupId);
+  bookingToDelete = groupId;
+  document.getElementById('deleteMessage').textContent = 
+    `Are you sure you want to delete this booking? (${groupBookings.length} time slot${groupBookings.length > 1 ? 's' : ''})`;
+  document.getElementById('deleteModal').classList.add('active');
+}
+
+function closeDeleteModal() {
+  bookingToDelete = null;
+  document.getElementById('deleteModal').classList.remove('active');
+}
+
+function confirmDelete() {
+  if (bookingToDelete) {
+    allBookings = allBookings.filter(b => b.groupId !== bookingToDelete);
+    saveBookingsToStorage();
+    closeDeleteModal();
+    if (currentView === 'month') {
+      renderMonthView();
+    } else {
       renderCalendar();
     }
+  }
+}
 
-    function formatHour(hour) {
-      const period = hour >= 12 ? 'PM' : 'AM';
-      const displayHour = hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour);
-      return `${displayHour}:00 ${period}`;
+function startSelection(e, slotId) {
+  e.preventDefault();
+  isSelecting = true;
+  selectionStart = slotId;
+  selectedSlots.clear();
+  selectedSlots.add(slotId);
+  updateSelectionDisplay();
+}
+
+function continueSelection(slotId) {
+  if (!isSelecting) return;
+  
+  const [startDay, startHour] = selectionStart.split('-').map(Number);
+  const [currentDay, currentHour] = slotId.split('-').map(Number);
+  
+  if (startDay !== currentDay) return;
+  
+  selectedSlots.clear();
+  const minHour = Math.min(startHour, currentHour);
+  const maxHour = Math.max(startHour, currentHour);
+  
+  for (let h = minHour; h <= maxHour; h++) {
+    selectedSlots.add(`${startDay}-${h}`);
+  }
+  
+  updateSelectionDisplay();
+}
+
+function endSelection() {
+  if (!isSelecting) return;
+  isSelecting = false;
+  
+  if (selectedSlots.size > 0) {
+    pendingBookingSlots = Array.from(selectedSlots);
+    document.getElementById('streamLinkModalTitle').textContent = 'Add Stream Link (Optional)';
+    document.getElementById('streamLinkModalDescription').textContent = 'You can add your live stream link now or come back later to add it.';
+    document.getElementById('streamLinkInput').value = '';
+    document.getElementById('streamLinkModal').classList.add('active');
+  }
+  
+  selectedSlots.clear();
+  updateSelectionDisplay();
+}
+
+function updateSelectionDisplay() {
+  document.querySelectorAll('.calendar-slot').forEach(slot => {
+    slot.classList.remove('selecting');
+    if (selectedSlots.has(slot.dataset.slotId) && !slot.classList.contains('booked')) {
+      slot.classList.add('selecting');
     }
+  });
+}
 
-    function formatDate(date) {
-      return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+function saveStreamLink() {
+  const streamLink = document.getElementById('streamLinkInput').value.trim();
+  
+  if (currentBookingGroup) {
+    // Editing existing booking
+    allBookings.forEach(booking => {
+      if (booking.groupId === currentBookingGroup) {
+        booking.streamLink = streamLink;
+      }
+    });
+    saveBookingsToStorage();
+    closeStreamLinkModal();
+    renderCalendar();
+  } else if (pendingBookingSlots) {
+    // Creating new booking
+    createBookings(streamLink);
+    closeStreamLinkModal();
+  }
+}
+
+function createBookings(streamLink) {
+  const groupId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+  
+  pendingBookingSlots.forEach(slotId => {
+    const slot = document.querySelector(`[data-slot-id="${slotId}"]`);
+    if (slot && !slot.classList.contains('booked')) {
+      const utcString = slot.dataset.dateUtc;
+      
+      const booking = {
+        id: Date.now() + '-' + Math.random().toString(36).substr(2, 9),
+        groupId: groupId,
+        userId: currentUser.id,
+        userName: userProfiles[currentUser.id]?.name || currentUser.name,
+        userEmail: currentUser.email,
+        dateTimeUTC: utcString,
+        streamLink: streamLink,
+        createdAt: new Date().toISOString()
+      };
+      
+      allBookings.push(booking);
     }
+  });
+  
+  saveBookingsToStorage();
+  renderCalendar();
+}
 
-    function formatDateTime(date) {
-      const hour = date.getHours();
-      const period = hour >= 12 ? 'PM' : 'AM';
-      const displayHour = hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour);
-      return `${date.getMonth() + 1}/${date.getDate()} ${displayHour}:00 ${period}`;
-    }
+function formatHour(hour) {
+  const period = hour >= 12 ? 'PM' : 'AM';
+  const displayHour = hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour);
+  return `${displayHour}:00 ${period}`;
+}
 
-    function saveBookingsToStorage() {
+function formatDate(date) {
+  return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+}
+
+function formatDateTime(date) {
+  const hour = date.getHours();
+  const period = hour >= 12 ? 'PM' : 'AM';
+  const displayHour = hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour);
+  return `${date.getMonth() + 1}/${date.getDate()} ${displayHour}:00 ${period}`;
+}
+
+function saveBookingsToStorage() {
   database.ref('bookings').set(allBookings);
 }
 
-    function loadBookingsFromStorage() {
+function loadBookingsFromStorage() {
   database.ref('bookings').on('value', (snapshot) => {
     const data = snapshot.val();
     if (data) {
@@ -780,11 +777,11 @@ const database = firebase.database();
   });
 }
 
-    function saveProfilesToStorage() {
+function saveProfilesToStorage() {
   database.ref('profiles').set(userProfiles);
 }
 
-    function loadProfilesFromStorage() {
+function loadProfilesFromStorage() {
   database.ref('profiles').on('value', (snapshot) => {
     const data = snapshot.val();
     if (data) {
@@ -792,13 +789,14 @@ const database = firebase.database();
     }
   });
 }
-    document.addEventListener('mouseup', () => {
-      if (isSelecting) {
-        endSelection();
-      }
-    });
 
-	// Tutorial System Variables
+document.addEventListener('mouseup', () => {
+  if (isSelecting) {
+    endSelection();
+  }
+});
+
+// Tutorial System Variables
 let currentTutorialStep = 0;
 let tutorialSteps = [
   {
