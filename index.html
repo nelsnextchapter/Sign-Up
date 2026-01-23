@@ -5,12 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sprint Sign-up System</title>
 
-<!-- Firebase Scripts -->
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+  <!-- Firebase Scripts -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 
-
+  <!-- Link to CSS file -->
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div class="container">
@@ -45,7 +46,7 @@
           </select>
         </div>
         <button class="help-btn" onclick="openTutorialHelp()">Help</button>
-<button class="logout-btn" onclick="logout()">Logout</button>
+        <button class="logout-btn" onclick="logout()">Logout</button>
       </div>
 
       <div class="calendar-container">
@@ -168,34 +169,36 @@
     </div>
   </div>
 
-<!-- Add this HTML right before the closing </body> tag, after all other modals -->
-<!-- Tutorial Modal -->
-<div class="tutorial-overlay" id="tutorialOverlay">
-  <div class="tutorial-modal">
-    <div class="tutorial-header">
-      <h2 id="tutorialTitle"></h2>
-    </div>
-    
-    <div class="tutorial-body">
-      <p id="tutorialText"></p>
-    </div>
-    
-    <div class="tutorial-progress" id="tutorialProgress"></div>
-    
-    <div class="tutorial-footer">
-      <label class="tutorial-checkbox">
-        <input type="checkbox" id="dontShowAgain">
-        <span>Don't show this again</span>
-      </label>
+  <!-- Tutorial Modal -->
+  <div class="tutorial-overlay" id="tutorialOverlay">
+    <div class="tutorial-modal">
+      <div class="tutorial-header">
+        <h2 id="tutorialTitle"></h2>
+      </div>
       
-      <div class="tutorial-buttons">
-        <button class="tutorial-btn skip" onclick="skipTutorial()">Skip Tutorial</button>
-        <button class="tutorial-btn prev" id="prevBtn" onclick="previousStep()" style="display: none;">Previous</button>
-        <button class="tutorial-btn next" id="nextBtn" onclick="nextStep()">Next</button>
-        <button class="tutorial-btn finish" id="finishBtn" onclick="finishTutorial()" style="display: none;">Finish</button>
+      <div class="tutorial-body">
+        <p id="tutorialText"></p>
+      </div>
+      
+      <div class="tutorial-progress" id="tutorialProgress"></div>
+      
+      <div class="tutorial-footer">
+        <label class="tutorial-checkbox">
+          <input type="checkbox" id="dontShowAgain">
+          <span>Don't show this again</span>
+        </label>
+        
+        <div class="tutorial-buttons">
+          <button class="tutorial-btn skip" onclick="skipTutorial()">Skip Tutorial</button>
+          <button class="tutorial-btn prev" id="prevBtn" onclick="previousStep()" style="display: none;">Previous</button>
+          <button class="tutorial-btn next" id="nextBtn" onclick="nextStep()">Next</button>
+          <button class="tutorial-btn finish" id="finishBtn" onclick="finishTutorial()" style="display: none;">Finish</button>
+        </div>
       </div>
     </div>
   </div>
-</div>
+
+  <!-- Link to JavaScript file -->
+  <script src="script.js"></script>
 </body>
 </html>
