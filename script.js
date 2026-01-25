@@ -861,22 +861,27 @@ function saveBookingsToStorage() {
 function loadBookingsFromStorage() {
   database.ref('bookings').on('value', (snapshot) => {
     const data = snapshot.val();
-    if (data) {
-      // Ensure allBookings is always an array
-      if (Array.isArray(data)) {
-        allBookings = data;
-      } else if (typeof data === 'object') {
-        // Convert object to array
-        allBookings = Object.values(data);
-      } else {
-        allBookings = [];
-      }
-      
-      if (currentView === 'month') {
-        renderMonthView();
-      } else {
-        renderCalendar();
-      }
+    
+    // Handle all cases: null, array, or object
+    if (!data) {
+      // No bookings exist - set to empty array
+      allBookings = [];
+    } else if (Array.isArray(data)) {
+      // Already an array
+      allBookings = data;
+    } else if (typeof data === 'object') {
+      // Convert object to array
+      allBookings = Object.values(data);
+    } else {
+      // Fallback to empty array
+      allBookings = [];
+    }
+    
+    // Always render, even if empty
+    if (currentView === 'month') {
+      renderMonthView();
+    } else {
+      renderCalendar();
     }
   });
 }
