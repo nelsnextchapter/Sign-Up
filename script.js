@@ -608,21 +608,38 @@ function localDateToUTC(localDate, timezone) {
   const hour = localDate.getHours();
   const min = localDate.getMinutes();
   
-  // Format the date-time string
-  const dtString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+  // Create an ISO string WITHOUT timezone info
+  const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}:00`;
   
-  // Use a reliable library approach - create date assuming it's in the target timezone
-  // Get current offset for this timezone
-  const now = new Date();
-  const utcNow = new Date(now.toLocaleString('en-US', { timeZone: 'UTC' }));
-  const tzNow = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
-  const offsetMs = tzNow - utcNow;
+  // Create two reference dates at the same moment
+  const referenceDate = new Date();
   
-  // Apply to our target time
-  const localAsDate = new Date(dtString);
-  const utcTime = new Date(localAsDate.getTime() - offsetMs);
+  // Get how this reference date appears in UTC vs the target timezone
+  const utcStr = referenceDate.toLocaleString('en-US', { timeZone: 'UTC', hour12: false });
+  const tzStr = referenceDate.toLocaleString('en-US', { timeZone: timezone, hour12: false });
   
-  return utcTime.toISOString();
+  // Calculate offset in milliseconds
+  const utcTime = new Date(utcStr).getTime();
+  const tzTime = new Date(tzStr).getTime();
+  const offset = utcTime - tzTime;
+  
+  // Apply offset to our target date
+  const localTime = new Date(dateString).getTime();
+  const utcTime_final = localTime + offset;
+  
+  return new Date(utcTime_final).toISOString();
+}
+
+function testConversion() {
+  // Test: 6am EST should become 11am UTC
+  const testDate = new Date(2026, 0, 25, 6, 0, 0); // Jan 25, 2026, 6:00 AM
+  const result = localDateToUTC(testDate, 'America/New_York');
+  console.log('Input: 6am EST on Jan 25, 2026');
+  console.log('Output UTC:', result);
+  console.log('Expected: Should show 11:00:00.000Z');
+  
+  const parsedBack = new Date(result);
+  console.log('Parsed back:', parsedBack.toLocaleString('en-US', { timeZone: 'America/New_York' }));
 }
 
 function getBookingForSlot(utcString) {
