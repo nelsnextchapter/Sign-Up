@@ -603,20 +603,61 @@ function deleteCurrentBooking() {
 
 function localDateToUTC(localDate, timezone) {
   const year = localDate.getFullYear();
-  const month = localDate.getMonth() + 1;
+  const month = localDate.getMonth();
   const day = localDate.getDate();
   const hour = localDate.getHours();
   const min = localDate.getMinutes();
   
-  const isoString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}:00`;
+  // Build a date string
+  const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}:00`;
   
-  const tempDate = new Date(isoString);
-  const utcDate = new Date(tempDate.toLocaleString('en-US', { timeZone: 'UTC' }));
-  const tzDate = new Date(tempDate.toLocaleString('en-US', { timeZone: timezone }));
-  const offset = utcDate.getTime() - tzDate.getTime();
+  // The trick: construct a Date assuming the time is in UTC, 
+  // then ask what that moment looks like in the target timezone,
+  // then calculate the difference
+  const utcDate = new Date(dateString + 'Z'); // Treat input as UTC
   
-  const trueUTC = new Date(tempDate.getTime() + offset);
-  return trueUTC.toISOString();
+  // See what this UTC time looks like in the target timezone
+  const tzFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
+  
+  const parts = tzFormatter.formatToParts(utcDate);
+  const tzYear = parseInt(parts.find(p => p.type === 'year').value);
+  const tzMonth = parseInt(parts.find(p => p.type === 'month').value) - 1;
+  const tzDay = parseInt(parts.find(p => p.type === 'day').value);
+  const tzHour = parseInt(parts.find(p => p.type === 'hour').value);
+  const tzMinute = parseInt(parts.find(p => p.type === 'minute').value);
+  
+  // Calculate the offset: difference between what we wanted and what we got
+  const offsetMs = (year - tzYear) * 365 * 24 * 60 * 60 * 1000 +
+                   (month - tzMonth) * 30 * 24 * 60 * 60 * 1000 +
+                   (day - tzDay) * 24 * 60 * 60 * 1000 +
+                   (hour - tzHour) * 60 * 60 * 1000 +
+                   (min - tzMinute) * 60 * 1000;
+  
+  // Adjust the UTC date by this offset
+  const correctUTC = new Date(utcDate.getTime() + offsetMs);
+  
+  return correctUTC.toISOString();
+}
+
+function testConversion() {
+  // Test: 6am EST should become 11am UTC
+  const testDate = new Date(2026, 0, 25, 6, 0, 0); // Jan 25, 2026, 6:00 AM
+  const result = localDateToUTC(testDate, 'America/New_York');
+  console.log('Input: 6am EST on Jan 25, 2026');
+  console.log('Output UTC:', result);
+  console.log('Expected: Should show 11:00:00.000Z');
+  
+  const parsedBack = new Date(result);
+  console.log('Parsed back:', parsedBack.toLocaleString('en-US', { timeZone: 'America/New_York' }));
 }
 
 function getBookingForSlot(utcString) {
@@ -643,8 +684,27 @@ function closeDeleteModal() {
 
 function confirmDelete() {
   if (bookingToDelete) {
+    // Get all bookings in this group
+    const bookingsToDelete = allBookings.filter(b => b.groupId === bookingToDelete);
+    
+    // Find the index of each booking in the array and delete them individually
+    // We delete in reverse order to avoid index shifting issues
+    const indices = [];
+    allBookings.forEach((booking, index) => {
+      if (booking.groupId === bookingToDelete) {
+        indices.push(index);
+      }
+    });
+    
+    // Delete each booking individually from Firebase (in reverse order)
+    // This triggers onDelete for each one, but only the FIRST sends an email
+    indices.reverse().forEach(index => {
+      database.ref(`bookings/${index}`).remove();
+    });
+    
+    // Update local array immediately for UI
     allBookings = allBookings.filter(b => b.groupId !== bookingToDelete);
-    saveBookingsToStorage();
+    
     closeDeleteModal();
     if (currentView === 'month') {
       renderMonthView();
@@ -736,15 +796,16 @@ function createBookings(streamLink) {
       const utcString = slot.dataset.dateUtc;
       
       const booking = {
-        id: Date.now() + '-' + Math.random().toString(36).substr(2, 9),
-        groupId: groupId,
-        userId: currentUser.id,
-        userName: userProfiles[currentUser.id]?.name || currentUser.name,
-        userEmail: currentUser.email,
-        dateTimeUTC: utcString,
-        streamLink: streamLink,
-        createdAt: new Date().toISOString()
-      };
+  id: Date.now() + '-' + Math.random().toString(36).substr(2, 9),
+  groupId: groupId,
+  userId: currentUser.id,
+  userName: userProfiles[currentUser.id]?.name || currentUser.name,
+  userEmail: currentUser.email,
+  dateTimeUTC: utcString,
+  timezone: userTimezone,  // ADD THIS LINE - stores the user's timezone
+  streamLink: streamLink,
+  createdAt: new Date().toISOString()
+};
       
       allBookings.push(booking);
     }
