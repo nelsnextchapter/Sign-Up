@@ -608,26 +608,44 @@ function localDateToUTC(localDate, timezone) {
   const hour = localDate.getHours();
   const min = localDate.getMinutes();
   
-  // Create an ISO string WITHOUT timezone info
+  // Build a date string
   const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}:00`;
   
-  // Create two reference dates at the same moment
-  const referenceDate = new Date();
+  // The trick: construct a Date assuming the time is in UTC, 
+  // then ask what that moment looks like in the target timezone,
+  // then calculate the difference
+  const utcDate = new Date(dateString + 'Z'); // Treat input as UTC
   
-  // Get how this reference date appears in UTC vs the target timezone
-  const utcStr = referenceDate.toLocaleString('en-US', { timeZone: 'UTC', hour12: false });
-  const tzStr = referenceDate.toLocaleString('en-US', { timeZone: timezone, hour12: false });
+  // See what this UTC time looks like in the target timezone
+  const tzFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
   
-  // Calculate offset in milliseconds
-  const utcTime = new Date(utcStr).getTime();
-  const tzTime = new Date(tzStr).getTime();
-  const offset = utcTime - tzTime;
+  const parts = tzFormatter.formatToParts(utcDate);
+  const tzYear = parseInt(parts.find(p => p.type === 'year').value);
+  const tzMonth = parseInt(parts.find(p => p.type === 'month').value) - 1;
+  const tzDay = parseInt(parts.find(p => p.type === 'day').value);
+  const tzHour = parseInt(parts.find(p => p.type === 'hour').value);
+  const tzMinute = parseInt(parts.find(p => p.type === 'minute').value);
   
-  // Apply offset to our target date
-  const localTime = new Date(dateString).getTime();
-  const utcTime_final = localTime + offset;
+  // Calculate the offset: difference between what we wanted and what we got
+  const offsetMs = (year - tzYear) * 365 * 24 * 60 * 60 * 1000 +
+                   (month - tzMonth) * 30 * 24 * 60 * 60 * 1000 +
+                   (day - tzDay) * 24 * 60 * 60 * 1000 +
+                   (hour - tzHour) * 60 * 60 * 1000 +
+                   (min - tzMinute) * 60 * 1000;
   
-  return new Date(utcTime_final).toISOString();
+  // Adjust the UTC date by this offset
+  const correctUTC = new Date(utcDate.getTime() + offsetMs);
+  
+  return correctUTC.toISOString();
 }
 
 function testConversion() {
