@@ -107,6 +107,7 @@ function signInWithGoogle() {
             }
           });
         }, 100);
+        checkIfOwner();
       }
     })
     .catch((error) => {
@@ -950,6 +951,51 @@ function finishTutorial() {
 // Open tutorial from Help button
 function openTutorialHelp() {
   showTutorial();
+}
+
+// Owner User ID - REPLACE WITH YOUR ACTUAL FIREBASE USER ID
+const OWNER_USER_ID = 'lbEzkPeUELTjgyZIHWxuLik0G3v2';
+
+function checkIfOwner() {
+  if (currentUser && currentUser.id === OWNER_USER_ID) {
+    document.getElementById('settingsBtn').style.display = 'inline-block';
+  }
+}
+
+function openSettingsModal() {
+  // Load current settings from Realtime Database
+  database.ref('/adminSettings').once('value', (snapshot) => {
+    const settings = snapshot.val() || {};
+    document.getElementById('emailNotificationsToggle').checked = settings.emailNotifications || false;
+    document.getElementById('ownerEmail').value = settings.ownerEmail || '';
+  });
+  
+  document.getElementById('settingsModal').classList.add('active');
+}
+
+function closeSettingsModal() {
+  document.getElementById('settingsModal').classList.remove('active');
+}
+
+function saveSettings() {
+  const emailNotifications = document.getElementById('emailNotificationsToggle').checked;
+  const ownerEmail = document.getElementById('ownerEmail').value.trim();
+  
+  if (emailNotifications && !ownerEmail) {
+    alert('Please enter your email address to receive notifications');
+    return;
+  }
+  
+  database.ref('/adminSettings').set({
+    emailNotifications: emailNotifications,
+    ownerEmail: ownerEmail
+  }).then(() => {
+    alert('Settings saved successfully!');
+    closeSettingsModal();
+  }).catch((error) => {
+    console.error('Error saving settings:', error);
+    alert('Failed to save settings. Please try again.');
+  });
 }
 
     init();
