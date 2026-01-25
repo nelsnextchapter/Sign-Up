@@ -603,24 +603,26 @@ function deleteCurrentBooking() {
 
 function localDateToUTC(localDate, timezone) {
   const year = localDate.getFullYear();
-  const month = localDate.getMonth() + 1;
+  const month = localDate.getMonth();
   const day = localDate.getDate();
   const hour = localDate.getHours();
   const min = localDate.getMinutes();
   
-  const isoString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}:00`;
+  // Format the date-time string
+  const dtString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
   
-  // This interprets the time as being in the SPECIFIED timezone and converts to UTC
-  const tempDate = new Date(isoString);
-  const utcDate = new Date(tempDate.toLocaleString('en-US', { timeZone: 'UTC' }));
-  const tzDate = new Date(tempDate.toLocaleString('en-US', { timeZone: timezone }));
+  // Use a reliable library approach - create date assuming it's in the target timezone
+  // Get current offset for this timezone
+  const now = new Date();
+  const utcNow = new Date(now.toLocaleString('en-US', { timeZone: 'UTC' }));
+  const tzNow = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
+  const offsetMs = tzNow - utcNow;
   
-  // Calculate offset: how many ms ahead/behind is the timezone from UTC
-  const offset = tzDate.getTime() - utcDate.getTime();
+  // Apply to our target time
+  const localAsDate = new Date(dtString);
+  const utcTime = new Date(localAsDate.getTime() - offsetMs);
   
-  // Subtract offset to get true UTC
-  const trueUTC = new Date(tempDate.getTime() - offset);
-  return trueUTC.toISOString();
+  return utcTime.toISOString();
 }
 
 function getBookingForSlot(utcString) {
