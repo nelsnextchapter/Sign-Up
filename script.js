@@ -602,21 +602,15 @@ function deleteCurrentBooking() {
 }
 
 function localDateToUTC(localDate, timezone) {
-  const year = localDate.getFullYear();
-  const month = localDate.getMonth() + 1;
-  const day = localDate.getDate();
-  const hour = localDate.getHours();
-  const min = localDate.getMinutes();
-  
-  const isoString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}:00`;
-  
-  const tempDate = new Date(isoString);
-  const utcDate = new Date(tempDate.toLocaleString('en-US', { timeZone: 'UTC' }));
-  const tzDate = new Date(tempDate.toLocaleString('en-US', { timeZone: timezone }));
-  const offset = utcDate.getTime() - tzDate.getTime();
-  
-  const trueUTC = new Date(tempDate.getTime() + offset);
-  return trueUTC.toISOString();
+  // Just treat the local date as UTC - it's already correct!
+  return new Date(Date.UTC(
+    localDate.getFullYear(),
+    localDate.getMonth(),
+    localDate.getDate(),
+    localDate.getHours(),
+    localDate.getMinutes(),
+    0
+  )).toISOString();
 }
 
 function getBookingForSlot(utcString) {
