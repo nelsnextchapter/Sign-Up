@@ -610,12 +610,16 @@ function localDateToUTC(localDate, timezone) {
   
   const isoString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}:00`;
   
+  // This interprets the time as being in the SPECIFIED timezone and converts to UTC
   const tempDate = new Date(isoString);
   const utcDate = new Date(tempDate.toLocaleString('en-US', { timeZone: 'UTC' }));
   const tzDate = new Date(tempDate.toLocaleString('en-US', { timeZone: timezone }));
-  const offset = utcDate.getTime() - tzDate.getTime();
   
-  const trueUTC = new Date(tempDate.getTime() + offset);
+  // Calculate offset: how many ms ahead/behind is the timezone from UTC
+  const offset = tzDate.getTime() - utcDate.getTime();
+  
+  // Subtract offset to get true UTC
+  const trueUTC = new Date(tempDate.getTime() - offset);
   return trueUTC.toISOString();
 }
 
@@ -736,15 +740,16 @@ function createBookings(streamLink) {
       const utcString = slot.dataset.dateUtc;
       
       const booking = {
-        id: Date.now() + '-' + Math.random().toString(36).substr(2, 9),
-        groupId: groupId,
-        userId: currentUser.id,
-        userName: userProfiles[currentUser.id]?.name || currentUser.name,
-        userEmail: currentUser.email,
-        dateTimeUTC: utcString,
-        streamLink: streamLink,
-        createdAt: new Date().toISOString()
-      };
+  id: Date.now() + '-' + Math.random().toString(36).substr(2, 9),
+  groupId: groupId,
+  userId: currentUser.id,
+  userName: userProfiles[currentUser.id]?.name || currentUser.name,
+  userEmail: currentUser.email,
+  dateTimeUTC: utcString,
+  timezone: userTimezone,  // ADD THIS LINE - stores the user's timezone
+  streamLink: streamLink,
+  createdAt: new Date().toISOString()
+};
       
       allBookings.push(booking);
     }
