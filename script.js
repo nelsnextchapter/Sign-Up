@@ -790,42 +790,22 @@ function saveStreamLink() {
 function createBookings(streamLink) {
   const groupId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
   
-  // Get the first and last slot times for the full time range
-  const sortedSlots = Array.from(pendingBookingSlots).sort();
-  const firstSlotId = sortedSlots[0];
-  const lastSlotId = sortedSlots[sortedSlots.length - 1];
-  
-  const firstSlot = document.querySelector(`[data-slot-id="${firstSlotId}"]`);
-  const lastSlot = document.querySelector(`[data-slot-id="${lastSlotId}"]`);
-  
-  const startTimeUTC = firstSlot ? firstSlot.dataset.dateUtc : null;
-  const lastSlotTimeUTC = lastSlot ? lastSlot.dataset.dateUtc : null;
-  
-  // Calculate end time (last slot + 1 hour)
-  const endTimeUTC = lastSlotTimeUTC ? 
-    new Date(new Date(lastSlotTimeUTC).getTime() + 60 * 60 * 1000).toISOString() : 
-    null;
-  
   pendingBookingSlots.forEach(slotId => {
     const slot = document.querySelector(`[data-slot-id="${slotId}"]`);
     if (slot && !slot.classList.contains('booked')) {
       const utcString = slot.dataset.dateUtc;
       
       const booking = {
-        id: Date.now() + '-' + Math.random().toString(36).substr(2, 9),
-        groupId: groupId,
-        userId: currentUser.id,
-        userName: userProfiles[currentUser.id]?.name || currentUser.name,
-        userEmail: currentUser.email,
-        dateTimeUTC: utcString,
-        timezone: userTimezone,
-        streamLink: streamLink,
-        createdAt: new Date().toISOString(),
-        // Store the full block info with each booking
-        groupSize: pendingBookingSlots.length,
-        groupStartTimeUTC: startTimeUTC,
-        groupEndTimeUTC: endTimeUTC
-      };
+  id: Date.now() + '-' + Math.random().toString(36).substr(2, 9),
+  groupId: groupId,
+  userId: currentUser.id,
+  userName: userProfiles[currentUser.id]?.name || currentUser.name,
+  userEmail: currentUser.email,
+  dateTimeUTC: utcString,
+  timezone: userTimezone,  // ADD THIS LINE - stores the user's timezone
+  streamLink: streamLink,
+  createdAt: new Date().toISOString()
+};
       
       allBookings.push(booking);
     }
@@ -833,6 +813,41 @@ function createBookings(streamLink) {
   
   saveBookingsToStorage();
   renderCalendar();
+}
+
+function formatHour(hour) {
+  const period = hour >= 12 ? 'PM' : 'AM';
+  const displayHour = hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour);
+  return `${displayHour}:00 ${period}`;
+}
+
+function formatDate(date) {
+  return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+}
+
+function formatDateTime(date) {
+  const hour = date.getHours();
+  const period = hour >= 12 ? 'PM' : 'AM';
+  const displayHour = hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour);
+  return `${date.getMonth() + 1}/${date.getDate()} ${displayHour}:00 ${period}`;
+}
+
+function saveBookingsToStorage() {
+  database.ref('bookings').set(allBookings);
+}
+
+function loadBookingsFromStorage() {
+  database.ref('bookings').on('value', (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+      allBookings = data;
+      if (currentView === 'month') {
+        renderMonthView();
+      } else {
+        renderCalendar();
+      }
+    }
+  });
 }
 
 function saveProfilesToStorage() {
