@@ -86,6 +86,9 @@ function signInWithGoogle() {
       document.getElementById('userEmail').textContent = currentUser.email;
       document.getElementById('userAvatar').textContent = currentUser.name.charAt(0);
       
+      // Check if owner - do this FIRST so button shows immediately
+      checkIfOwner();
+      
       // Check if user has a profile
       if (!userProfiles[currentUser.id]) {
         // First time user - show profile setup
@@ -107,7 +110,6 @@ function signInWithGoogle() {
             }
           });
         }, 100);
-        checkIfOwner();
       }
     })
     .catch((error) => {
