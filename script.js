@@ -862,7 +862,16 @@ function loadBookingsFromStorage() {
   database.ref('bookings').on('value', (snapshot) => {
     const data = snapshot.val();
     if (data) {
-      allBookings = data;
+      // Ensure allBookings is always an array
+      if (Array.isArray(data)) {
+        allBookings = data;
+      } else if (typeof data === 'object') {
+        // Convert object to array
+        allBookings = Object.values(data);
+      } else {
+        allBookings = [];
+      }
+      
       if (currentView === 'month') {
         renderMonthView();
       } else {
