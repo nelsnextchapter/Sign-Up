@@ -834,9 +834,6 @@ function createBookings(streamLink) {
   saveBookingsToStorage();
   renderCalendar();
 }
-    }
-  });
-}
 
 function saveProfilesToStorage() {
   database.ref('profiles').set(userProfiles);
