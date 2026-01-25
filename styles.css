@@ -839,4 +839,21 @@ body {
   .tutorial-checkbox {
     order: -1;
   }
+
+  .settings-btn {
+  background: #17a2b8;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: background 0.3s;
+  margin-right: 10px;
+}
+
+.settings-btn:hover {
+  background: #138496;
+}
 }
