@@ -684,8 +684,27 @@ function closeDeleteModal() {
 
 function confirmDelete() {
   if (bookingToDelete) {
+    // Get all bookings in this group
+    const bookingsToDelete = allBookings.filter(b => b.groupId === bookingToDelete);
+    
+    // Find the index of each booking in the array and delete them individually
+    // We delete in reverse order to avoid index shifting issues
+    const indices = [];
+    allBookings.forEach((booking, index) => {
+      if (booking.groupId === bookingToDelete) {
+        indices.push(index);
+      }
+    });
+    
+    // Delete each booking individually from Firebase (in reverse order)
+    // This triggers onDelete for each one, but only the FIRST sends an email
+    indices.reverse().forEach(index => {
+      database.ref(`bookings/${index}`).remove();
+    });
+    
+    // Update local array immediately for UI
     allBookings = allBookings.filter(b => b.groupId !== bookingToDelete);
-    saveBookingsToStorage();
+    
     closeDeleteModal();
     if (currentView === 'month') {
       renderMonthView();
