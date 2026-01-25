@@ -684,24 +684,22 @@ function closeDeleteModal() {
 
 function confirmDelete() {
   if (bookingToDelete) {
-    console.log('=== STARTING DELETE ===');
-    console.log('Group ID to delete:', bookingToDelete);
-    
     // Get all bookings in this group
     const bookingsToDelete = allBookings.filter(b => b.groupId === bookingToDelete);
-    console.log('Number of bookings to delete:', bookingsToDelete.length);
-    console.log('Booking IDs:', bookingsToDelete.map(b => b.id));
     
-    // Delete each booking individually using its ID as the key
-    bookingsToDelete.forEach(booking => {
-      console.log('Deleting booking with ID:', booking.id);
-      database.ref(`bookings/${booking.id}`).remove()
-        .then(() => {
-          console.log('Successfully deleted:', booking.id);
-        })
-        .catch(error => {
-          console.error('Error deleting:', booking.id, error);
-        });
+    // Find the index of each booking in the array and delete them individually
+    // We delete in reverse order to avoid index shifting issues
+    const indices = [];
+    allBookings.forEach((booking, index) => {
+      if (booking.groupId === bookingToDelete) {
+        indices.push(index);
+      }
+    });
+    
+    // Delete each booking individually from Firebase (in reverse order)
+    // This triggers onDelete for each one, but only the FIRST sends an email
+    indices.reverse().forEach(index => {
+      database.ref(`bookings/${index}`).remove();
     });
     
     // Update local array immediately for UI
@@ -835,20 +833,14 @@ function formatDateTime(date) {
 }
 
 function saveBookingsToStorage() {
-  // Convert array to object with booking IDs as keys
-  const bookingsObject = {};
-  allBookings.forEach(booking => {
-    bookingsObject[booking.id] = booking;
-  });
-  database.ref('bookings').set(bookingsObject);
+  database.ref('bookings').set(allBookings);
 }
 
 function loadBookingsFromStorage() {
   database.ref('bookings').on('value', (snapshot) => {
     const data = snapshot.val();
     if (data) {
-      // Convert object back to array
-      allBookings = Object.values(data);
+      allBookings = data;
       if (currentView === 'month') {
         renderMonthView();
       } else {
