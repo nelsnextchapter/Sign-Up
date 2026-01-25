@@ -340,6 +340,12 @@ function getBookingsForDay(date) {
   
   const uniqueBookings = {};
   allBookings.forEach(booking => {
+    // ADD THIS CHECK - Skip undefined/null bookings
+    if (!booking || !booking.dateTimeUTC) {
+      return;
+    }
+    
+    // KEEP EVERYTHING BELOW THIS
     const bookingTime = new Date(booking.dateTimeUTC).getTime();
     if (bookingTime >= new Date(startUTC).getTime() && 
         bookingTime <= new Date(endUTC).getTime()) {
@@ -666,6 +672,10 @@ function getBookingForSlot(utcString) {
   const slotTime = new Date(utcString).getTime();
   
   return allBookings.find(booking => {
+    // Skip undefined/null bookings
+    if (!booking || !booking.dateTimeUTC) {
+      return false;
+    }
     const bookingTime = new Date(booking.dateTimeUTC).getTime();
     return Math.abs(bookingTime - slotTime) < 60000;
   });
