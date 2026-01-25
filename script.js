@@ -684,12 +684,24 @@ function closeDeleteModal() {
 
 function confirmDelete() {
   if (bookingToDelete) {
+    console.log('=== STARTING DELETE ===');
+    console.log('Group ID to delete:', bookingToDelete);
+    
     // Get all bookings in this group
     const bookingsToDelete = allBookings.filter(b => b.groupId === bookingToDelete);
+    console.log('Number of bookings to delete:', bookingsToDelete.length);
+    console.log('Booking IDs:', bookingsToDelete.map(b => b.id));
     
     // Delete each booking individually using its ID as the key
     bookingsToDelete.forEach(booking => {
-      database.ref(`bookings/${booking.id}`).remove();
+      console.log('Deleting booking with ID:', booking.id);
+      database.ref(`bookings/${booking.id}`).remove()
+        .then(() => {
+          console.log('Successfully deleted:', booking.id);
+        })
+        .catch(error => {
+          console.error('Error deleting:', booking.id, error);
+        });
     });
     
     // Update local array immediately for UI
