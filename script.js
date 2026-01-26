@@ -564,12 +564,12 @@ function showBookingInfo(booking) {
     const streamUrl = booking.streamLink.startsWith('http') ? booking.streamLink : `https://${booking.streamLink}`;
     content += `<p><strong>Stream:</strong> <a href="${streamUrl}" target="_blank">Watch Live</a></p>`;
   } else if (booking.userId === currentUser.id) {
-    content += `<p><em>No stream link added yet</em></p>`;
+    content += `<p><em>No 'join' link added yet</em></p>`;
   }
   content += '</div>';
   
   if (booking.userId === currentUser.id) {
-    content += '<button class="modal-btn primary" onclick="editStreamLink()" style="margin-bottom: 10px; width: 100%;">Edit Stream Link</button>';
+    content += '<button class="modal-btn primary" onclick="editStreamLink()" style="margin-bottom: 10px; width: 100%;">Edit 'Join' Link</button>';
     document.getElementById('deleteBookingBtn').style.display = 'block';
   } else {
     document.getElementById('deleteBookingBtn').style.display = 'none';
@@ -581,8 +581,8 @@ function showBookingInfo(booking) {
 
 function editStreamLink() {
   document.getElementById('bookingInfoModal').classList.remove('active');
-  document.getElementById('streamLinkModalTitle').textContent = 'Edit Stream Link';
-  document.getElementById('streamLinkModalDescription').textContent = 'Update your live stream link for this booking.';
+  document.getElementById('streamLinkModalTitle').textContent = 'Edit 'Join' Link';
+  document.getElementById('streamLinkModalDescription').textContent = 'Update your guest's 'Join' link for this booking.';
   document.getElementById('streamLinkInput').value = currentViewingBooking.streamLink || '';
   currentBookingGroup = currentViewingBooking.groupId;
   document.getElementById('streamLinkModal').classList.add('active');
@@ -760,8 +760,8 @@ function endSelection() {
   
   if (selectedSlots.size > 0) {
     pendingBookingSlots = Array.from(selectedSlots);
-    document.getElementById('streamLinkModalTitle').textContent = 'Add Stream Link (Optional)';
-    document.getElementById('streamLinkModalDescription').textContent = 'You can add your live stream link now or come back later to add it.';
+    document.getElementById('streamLinkModalTitle').textContent = 'Add Guest 'Join' Link (Optional)';
+    document.getElementById('streamLinkModalDescription').textContent = 'You can add your link for guests to join you on screen now or come back later to add it.';
     document.getElementById('streamLinkInput').value = '';
     document.getElementById('streamLinkModal').classList.add('active');
   }
