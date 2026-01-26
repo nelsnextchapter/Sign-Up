@@ -944,11 +944,11 @@ let tutorialSteps = [
   },
   {
     title: "📝 How To Reserve Sprint Times",
-    text: "In Week View: You can select multiple consecutive hours. Click and drag to select consecutive time slots. After releasing, you'll be prompted to add an optional guest link. Then the reservation is created! NOTE: Do not create separate reservations for consecutive hours"
+    text: "In Week View: You can select multiple consecutive hours. Click and drag to select consecutive time slots. After releasing, you'll be prompted to add an optional guest link. Then the reservation is created and you should receive a confirmation email! \n\nNote: Do not create individual reservations for consecutive hours unless...\n\nIMPORTANT: You cannot drag across different days. If you need to book time that crosses midnight (e.g., 10pm-3am), you must create two separate reservations: one for the hours on the first day and one for the hours on the next day."
   },
   {
     title: "🔗 Adding 'Join' Links for Guests",
-    text: "Once you select your sprint time, you'll be prompted to add an optional guest link for others to join you on screen during your sprint. The guest's 'Join' link can be added when you reseve your sprint time OR at a later time by clicking on your reservation and selecting 'Edit Guest Join Link'."
+    text: "Once you select your sprint time, you'll be prompted to add an optional guest link for others to join you on screen during your sprint. The guest's 'Join' link can be added when you reseve your sprint time OR at a later time by clicking on your reservation (green) and selecting 'Edit Guest Join Link'."
   },
   {
     title: "✏️ Viewing & Editing Bookings",
