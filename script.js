@@ -987,7 +987,7 @@ function showTutorial() {
 function renderTutorialStep() {
   const step = tutorialSteps[currentTutorialStep];
   document.getElementById('tutorialTitle').textContent = step.title;
-  document.getElementById('tutorialText').textContent = step.text;
+  document.getElementById('tutorialText').innerHTML = step.text.replace(/\n/g, '<br>');
   
   // Update progress dots
   const progressContainer = document.getElementById('tutorialProgress');
