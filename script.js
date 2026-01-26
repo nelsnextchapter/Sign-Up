@@ -593,8 +593,8 @@ function closeStreamLinkModal() {
   currentBookingGroup = null;
   pendingBookingSlots = null;
   // Reset modal text to default
-  document.getElementById('streamLinkModalTitle').textContent = 'Add Stream Link (Optional)';
-  document.getElementById('streamLinkModalDescription').textContent = 'You can add your live stream link now or come back later to add it.';
+  document.getElementById('streamLinkModalTitle').textContent = 'Add Guest 'Join' Link (Optional)';
+  document.getElementById('streamLinkModalDescription').textContent = 'You can add your link for guests to join you on screen now or come back later to add it.';
 }
 
 function closeBookingInfoModal() {
