@@ -1064,8 +1064,11 @@ function openTutorialHelp() {
 const OWNER_USER_ID = 'lbEzkPeUELTjgyZIHWxuLik0G3v2';
 
 function checkIfOwner() {
+  const settingsBtn = document.getElementById('settingsBtn');
   if (currentUser && currentUser.id === OWNER_USER_ID) {
-    document.getElementById('settingsBtn').style.display = 'inline-block';
+    settingsBtn.style.display = 'inline-block';
+  } else {
+    settingsBtn.style.display = 'none';
   }
 }
 
