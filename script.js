@@ -529,7 +529,7 @@ function showTooltip(e, booking) {
   if (booking.streamLink) {
     // Ensure stream link has protocol
     const streamUrl = booking.streamLink.startsWith('http') ? booking.streamLink : `https://${booking.streamLink}`;
-    content += `Stream: <a href="${streamUrl}" target="_blank">Watch Live</a>`;
+    content += `Stream: <a href="${streamUrl}" target="_blank">Join On Screen</a>`;
   }
   
   tooltipElement.innerHTML = content;
@@ -562,7 +562,7 @@ function showBookingInfo(booking) {
   if (booking.streamLink) {
     // Ensure stream link has protocol
     const streamUrl = booking.streamLink.startsWith('http') ? booking.streamLink : `https://${booking.streamLink}`;
-    content += `<p><strong>Stream:</strong> <a href="${streamUrl}" target="_blank">Watch Live</a></p>`;
+    content += `<p><strong>Stream:</strong> <a href="${streamUrl}" target="_blank">Join On Screen</a></p>`;
   } else if (booking.userId === currentUser.id) {
     content += `<p><em>No join link added yet</em></p>`;
   }
