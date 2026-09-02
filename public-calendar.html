@@ -31,11 +31,11 @@
 <body>
   <div class="container">
     <div class="header">
-      <h1>📅 Sprint Calendar</h1>
-      <p>Public view — click any reserved slot to see who's sprinting</p>
+      <h1>📅 Mystic Readathon Sprint Calendar</h1>
+      <p>Public view: Click any sprint for more details</p>
     </div>
 
-    <div class="public-note">You're viewing a read-only calendar. Reservations can only be made or changed by signed-in hosts.</div>
+    <div class="public-note">You are viewing a read-only calendar.</div>
 
     <div id="appSection">
       <div class="user-info">
@@ -78,11 +78,11 @@
           <div class="legend">
             <div class="legend-item">
               <div class="legend-box available"></div>
-              <span>Available</span>
+              <span>Nothing Scheduled</span>
             </div>
             <div class="legend-item">
               <div class="legend-box other-booking"></div>
-              <span>Reserved</span>
+              <span>Live Stream</span>
             </div>
           </div>
         </div>
@@ -93,7 +93,7 @@
   <!-- Booking Info Modal (view-only) -->
   <div class="modal-overlay" id="bookingInfoModal">
     <div class="modal">
-      <h3>Reservation Details</h3>
+      <h3>Sprint Details</h3>
       <div id="bookingInfoContent"></div>
       <div class="modal-buttons">
         <button class="modal-btn cancel" onclick="closeBookingInfoModal()">Close</button>
