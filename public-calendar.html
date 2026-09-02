@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sprint Calendar - Public View</title>
+
+  <!-- Firebase Scripts (only need database, no auth) -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+  <!-- Reuses your existing site styles -->
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* Small additions specific to the public view */
+    .public-note {
+      text-align: center;
+      padding: 10px;
+      background: #fff3cd;
+      color: #856404;
+      font-size: 13px;
+    }
+    .calendar-slot.booked {
+      cursor: pointer;
+    }
+    .calendar-slot:not(.booked) {
+      cursor: default;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📅 Sprint Calendar</h1>
+      <p>Public view — click any reserved slot to see who's sprinting</p>
+    </div>
+
+    <div class="public-note">You're viewing a read-only calendar. Reservations can only be made or changed by signed-in hosts.</div>
+
+    <div id="appSection">
+      <div class="user-info">
+        <div class="timezone-selector">
+          <label for="timezoneSelect">Your Timezone:</label>
+          <select id="timezoneSelect" onchange="handleTimezoneChange()">
+            <!-- Populated by JavaScript -->
+          </select>
+        </div>
+      </div>
+
+      <div class="calendar-container">
+        <div class="view-toggle">
+          <button id="monthViewBtn" class="active" onclick="switchToMonthView()">Month View</button>
+          <button id="weekViewBtn" onclick="switchToWeekView()">Week View</button>
+        </div>
+
+        <!-- Month View -->
+        <div class="month-view active" id="monthView">
+          <div class="calendar-nav">
+            <button onclick="changeMonth(-1)">← Previous Month</button>
+            <h2 id="monthDisplay"></h2>
+            <button onclick="changeMonth(1)">Next Month →</button>
+          </div>
+          <div class="month-calendar" id="monthCalendar"></div>
+        </div>
+
+        <!-- Week View -->
+        <div class="week-view" id="weekView">
+          <div class="calendar-nav">
+            <button onclick="changeWeek(-1)">← Previous Week</button>
+            <h2 id="weekDisplay"></h2>
+            <button onclick="changeWeek(1)">Next Week →</button>
+          </div>
+
+          <div class="calendar-wrapper">
+            <div class="calendar" id="calendar"></div>
+          </div>
+
+          <div class="legend">
+            <div class="legend-item">
+              <div class="legend-box available"></div>
+              <span>Available</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-box other-booking"></div>
+              <span>Reserved</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Booking Info Modal (view-only) -->
+  <div class="modal-overlay" id="bookingInfoModal">
+    <div class="modal">
+      <h3>Reservation Details</h3>
+      <div id="bookingInfoContent"></div>
+      <div class="modal-buttons">
+        <button class="modal-btn cancel" onclick="closeBookingInfoModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="public-script.js"></script>
+</body>
+</html>
