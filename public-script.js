@@ -29,8 +29,8 @@ const database = firebase.database();
 // ============================================================
 const VIEW_LOCK = {
   enabled: true,
-  startDate: '2026-09-01',
-  endDate: '2026-09-30'
+  startDate: '2026-08-30',
+  endDate: '2026-10-01'
 };
 
 const lockStart = VIEW_LOCK.enabled ? new Date(VIEW_LOCK.startDate + 'T00:00:00') : null;
